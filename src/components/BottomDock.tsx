@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
 import { FilterIcon, LayersIcon, PlaybackIcon, SettingsIcon, StatsIcon, WeatherIcon } from './Icons'
 import LayersMenu from './LayersMenu'
 import WeatherPanel from './WeatherPanel'
@@ -20,7 +20,7 @@ interface Props {
   radar: RadarController
 }
 
-export default function BottomDock({ layers, onLayersChange, radar }: Props) {
+function BottomDock({ layers, onLayersChange, radar }: Props) {
   const [active, setActive] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -60,3 +60,5 @@ export default function BottomDock({ layers, onLayersChange, radar }: Props) {
     </div>
   )
 }
+
+export default memo(BottomDock)

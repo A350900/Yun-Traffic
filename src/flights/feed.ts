@@ -20,6 +20,8 @@ export interface FocusHint {
 }
 
 const POLL_MS = 3000
+/** While the tab is hidden, poll rarely; catch up as soon as it's visible again. */
+const HIDDEN_POLL_MS = 30_000
 
 /**
  * Polls /api/aircraft for deltas and keeps a live table of aircraft.
@@ -57,9 +59,17 @@ export function startFeed(getFocus: () => FocusHint | null, onUpdate: (s: FeedSt
       state.error = (err as Error).message
     }
     onUpdate(state)
-    if (!stopped) timer = window.setTimeout(poll, POLL_MS)
+    if (!stopped) timer = window.setTimeout(poll, document.hidden ? HIDDEN_POLL_MS : POLL_MS)
   }
   poll()
+
+  const onVisible = () => {
+    if (!document.hidden && !stopped) {
+      clearTimeout(timer)
+      poll()
+    }
+  }
+  document.addEventListener('visibilitychange', onVisible)
 
   return {
     state,
@@ -67,6 +77,7 @@ export function startFeed(getFocus: () => FocusHint | null, onUpdate: (s: FeedSt
       stopped = true
       clearTimeout(timer)
       controller?.abort()
+      document.removeEventListener('visibilitychange', onVisible)
     },
   }
 }

@@ -40,21 +40,38 @@ function iconFor(ac: AircraftTuple) {
   return ground ? ICON.ground : ICON.air
 }
 
-/** Build a FeatureCollection with positions projected to `now`. */
-export function buildFeatures(aircraft: AircraftMap, now: number): FeatureCollection {
+/** Area to include when zoomed in; aircraft outside it aren't sent to the map. */
+export interface ViewWindow {
+  centerLon: number
+  /** Half-width in degrees of longitude (handles the antimeridian) */
+  halfLon: number
+  south: number
+  north: number
+}
+
+/**
+ * Build a GeoJSON FeatureCollection with positions projected to `now`.
+ * Properties are kept minimal: MapLibre copies every object to its worker,
+ * and that copy is the most expensive part of an update.
+ */
+export function buildFeatures(aircraft: AircraftMap, now: number, view: ViewWindow | null, keep: string | null): FeatureCollection {
   const features: Feature[] = []
   for (const ac of aircraft.values()) {
     if (isSurfaceVehicle(ac)) continue
+    const pos = extrapolate(ac, now)
+    if (view && ac[F.Hex] !== keep) {
+      const dLon = ((pos[0] - view.centerLon + 540) % 360) - 180
+      if (dLon > view.halfLon || dLon < -view.halfLon || pos[1] < view.south || pos[1] > view.north) continue
+    }
     features.push({
       type: 'Feature',
-      geometry: { type: 'Point', coordinates: extrapolate(ac, now) },
+      geometry: { type: 'Point', coordinates: pos },
       properties: {
         hex: ac[F.Hex],
-        rot: ac[F.Track] ?? 0,
+        rot: Math.round(ac[F.Track] ?? 0),
         icon: iconFor(ac),
         s: sizeFor(ac),
         cs: ac[F.Callsign] ?? ac[F.Registration] ?? '',
-        heli: isHeli(ac),
       },
     })
   }
@@ -78,9 +95,10 @@ export function addAircraftLayers(map: MLMap) {
     type: 'geojson',
     data: { type: 'FeatureCollection', features: [] },
     // Aircraft are points only; skip work GeoJSON sources do for lines/polygons.
+    // Tiles above z8 are overzoomed (still ~20 m precision), which keeps re-tiling cheap.
     tolerance: 0,
     buffer: 32,
-    maxzoom: 10,
+    maxzoom: 8,
   })
 
   map.addLayer({
@@ -128,7 +146,7 @@ export function addAircraftLayers(map: MLMap) {
     source: SOURCE,
     filter: ['==', ['get', 'hex'], ''],
     layout: {
-      'icon-image': ['case', ['get', 'heli'], ICON.heliSelected, ICON.selected],
+      'icon-image': ['case', ['in', 'heli', ['get', 'icon']], ICON.heliSelected, ICON.selected],
       'icon-size': iconSize(1.35),
       'icon-rotate': ['get', 'rot'],
       'icon-rotation-alignment': 'map',
@@ -143,11 +161,11 @@ export function setSelected(map: MLMap, hex: string | null) {
   if (map.getLayer(SELECTED_LAYER)) map.setFilter(SELECTED_LAYER, ['==', ['get', 'hex'], hex ?? ''])
 }
 
-export function updateAircraftSource(map: MLMap, aircraft: AircraftMap, now: number) {
+export function updateAircraftSource(map: MLMap, aircraft: AircraftMap, now: number, view: ViewWindow | null, keep: string | null) {
   const src = map.getSource(SOURCE) as GeoJSONSource | undefined
-  if (!src) return 0
+  if (!src) return { ms: 0, sent: 0 }
   const t0 = performance.now()
-  const data = buildFeatures(aircraft, now)
+  const data = buildFeatures(aircraft, now, view, keep)
   src.setData(data)
-  return performance.now() - t0
+  return { ms: performance.now() - t0, sent: data.features.length }
 }

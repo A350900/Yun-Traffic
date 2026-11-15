@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { THEMES, ACTIVE_THEME } from '../config/theme'
 import { CLOCKS } from '../config/clocks'
 import { MenuIcon, SearchIcon, UserIcon } from './Icons'
@@ -61,7 +61,7 @@ function WorldClocks() {
   )
 }
 
-export default function TopBar() {
+function TopBar() {
   return (
     <header className="topbar">
       <WorldClocks />
@@ -82,3 +82,5 @@ export default function TopBar() {
     </header>
   )
 }
+
+export default memo(TopBar)
