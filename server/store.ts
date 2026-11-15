@@ -48,14 +48,11 @@ export class AircraftStore {
   private tombstones = new Map<string, { version: number; at: number }>()
   private version = 0
   private silenceMs = BASE_SILENCE_MS
-  /** How often the main source reports (ms); positions can be this old in normal operation. */
-  reportIntervalMs = 90_000
   /** Oldest version a delta can still be computed from */
   private floor = 0
 
   /** Let a source that reports every `intervalMs` keep its aircraft between reports. */
   setReportInterval(intervalMs: number) {
-    this.reportIntervalMs = intervalMs
     this.silenceMs = Math.max(BASE_SILENCE_MS, intervalMs * 1.5 + 60_000)
   }
 
@@ -74,59 +71,12 @@ export class AircraftStore {
   coverage() {
     const out: Record<string, { seen: number; onlyThisSource: number }> = {}
     for (const src of SOURCES) out[src] = { seen: 0, onlyThisSource: 0 }
-    for (const [hex, e] of this.entries) {
-      if (e.data[13]) continue // estimates aren't any source's coverage
+    for (const hex of this.entries.keys()) {
       const by = SOURCES.filter((src) => this.seen.get(src)!.has(hex))
       for (const src of by) out[src].seen++
       if (by.length === 1) out[by[0]].onlyThisSource++
     }
     return out
-  }
-
-  /** Real position time each continued estimate started from. */
-  private ghostAnchor = new Map<string, number>()
-
-  /**
-   * Add or move an estimated aircraft (Kind.Continued / Kind.Simulated).
-   * `anchor`: time of the last real position it's estimated from; only a newer
-   * real report replaces it. Returns false if live data is there instead.
-   */
-  upsertGhost(ac: AircraftTuple, anchor = 0) {
-    const existing = this.entries.get(ac[0])
-    if (existing && !existing.data[13] && existing.data[9] > anchor) return false // fresher live data
-    this.version++
-    this.entries.set(ac[0], { data: ac, version: this.version, lastReported: Date.now() })
-    this.ghostAnchor.set(ac[0], anchor)
-    this.tombstones.delete(ac[0])
-    return true
-  }
-
-  remove(hex: string) {
-    this.ghostAnchor.delete(hex)
-    if (!this.entries.delete(hex)) return
-    this.version++
-    this.tombstones.set(hex, { version: this.version, at: Date.now() })
-  }
-
-  /** Live aircraft whose latest real position is at least `ms` old (left coverage). */
-  stalePositions(ms: number): AircraftTuple[] {
-    const now = Date.now()
-    const out: AircraftTuple[] = []
-    for (const e of this.entries.values()) if (!e.data[13] && now - e.data[9] >= ms) out.push(e.data)
-    return out
-  }
-
-  /** Current entries of a kind (0 = live). */
-  ofKind(kind: number): AircraftTuple[] {
-    const out: AircraftTuple[] = []
-    for (const e of this.entries.values()) if ((e.data[13] ?? 0) === kind) out.push(e.data)
-    return out
-  }
-
-  get liveCount() {
-    let n = 0
-    for (const e of this.entries.values()) if (!e.data[13]) n++
-    return n
   }
 
   get(hex: string): AircraftTuple | undefined {
@@ -140,19 +90,6 @@ export class AircraftStore {
   upsert(ac: AircraftTuple, source: SourceName) {
     const hex = ac[0]
     this.seen.get(source)!.set(hex, Date.now())
-    // A newer real position replaces an estimate of the same aircraft; the
-    // same old position re-reported (sources keep listing aircraft that left
-    // coverage) doesn't.
-    const ghost = this.entries.get(hex)
-    if (ghost && ghost.data[13]) {
-      if (ac[9] > (this.ghostAnchor.get(hex) ?? 0)) {
-        this.entries.delete(hex)
-        this.ghostAnchor.delete(hex)
-      } else {
-        ghost.lastReported = Date.now()
-        return
-      }
-    }
     // Learn type/registration/category from whichever source has them.
     if (ac[7] || ac[8]) {
       const m = this.meta.get(hex)
@@ -194,9 +131,7 @@ export class AircraftStore {
 
   prune(now = Date.now()) {
     for (const [hex, e] of this.entries) {
-      const ghost = Boolean(e.data[13])
-      if (now - e.lastReported > this.silenceMs || (!ghost && now - e.data[9] > MAX_POSITION_AGE_MS)) {
-        this.ghostAnchor.delete(hex)
+      if (now - e.lastReported > this.silenceMs || now - e.data[9] > MAX_POSITION_AGE_MS) {
         this.entries.delete(hex)
         this.version++
         this.tombstones.set(hex, { version: this.version, at: now })

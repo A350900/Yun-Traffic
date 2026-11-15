@@ -41,7 +41,7 @@ function heliPath(ctx: CanvasRenderingContext2D) {
   ctx.closePath() // rotor blade 2
 }
 
-function draw(shape: Shape, fill: string | null, stroke: string, strokeWidth: number, glow?: string) {
+function draw(shape: Shape, fill: string, stroke: string, strokeWidth: number, glow?: string) {
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = SIZE * PX
   const ctx = canvas.getContext('2d')!
@@ -53,10 +53,8 @@ function draw(shape: Shape, fill: string | null, stroke: string, strokeWidth: nu
     ctx.shadowColor = glow
     ctx.shadowBlur = 6
   }
-  if (fill) {
-    ctx.fillStyle = fill
-    ctx.fill('nonzero')
-  }
+  ctx.fillStyle = fill
+  ctx.fill('nonzero')
   ctx.shadowBlur = 0
   ctx.strokeStyle = stroke
   ctx.lineWidth = strokeWidth
@@ -71,8 +69,6 @@ export const ICON = {
   heliGround: 'ac-heli-ground',
   selected: 'ac-selected',
   heliSelected: 'ac-heli-selected',
-  /** Estimated (not live): hollow outline */
-  ghost: 'ac-ghost',
 } as const
 
 export function addAircraftIcons(map: MLMap) {
@@ -84,7 +80,6 @@ export function addAircraftIcons(map: MLMap) {
   add(ICON.ground, draw('jet', '#8d8494', outline, 1.1))
   add(ICON.heliAir, draw('heli', '#f7b2c6', outline, 0.9))
   add(ICON.heliGround, draw('heli', '#8d8494', outline, 0.9))
-  add(ICON.ghost, draw('jet', 'rgba(247, 178, 198, 0.12)', '#f7b2c6', 1.3))
   add(ICON.selected, draw('jet', '#ffffff', '#c8456b', 1.6, 'rgba(200, 69, 107, 0.9)'))
   add(ICON.heliSelected, draw('heli', '#ffffff', '#c8456b', 1.3, 'rgba(200, 69, 107, 0.9)'))
 }

@@ -7,9 +7,7 @@ import { AircraftStore } from './store.ts'
 import { Scheduler } from './scheduler.ts'
 import { OpenSkyPoller } from './opensky.ts'
 import { AIRPLANES_LIVE, RegionSweep } from './regionSweep.ts'
-import { flightInfo, flightTrace, simulatedFlightInfo } from './flightInfo.ts'
-import { FlightHistory } from './history.ts'
-import { GhostManager } from './ghosts.ts'
+import { flightInfo, flightTrace } from './flightInfo.ts'
 import type { AircraftResponse } from '../shared/wire.ts'
 
 // Honour HTTPS_PROXY when one is set (e.g. in sandboxed/corporate networks).
@@ -31,14 +29,6 @@ opensky.start()
 // aircraft OpenSky doesn't see: airplanes.live (region sweep) and adsb.lol.
 const airplanesLive = new RegionSweep(store, AIRPLANES_LIVE)
 if (process.env.AIRPLANESLIVE_DISABLED !== '1') airplanesLive.start()
-
-// Estimated aircraft where there's no live data (see server/ghosts.ts).
-const history = new FlightHistory(() => opensky.authHeaders())
-const ghosts = new GhostManager(store, history)
-if (process.env.GHOSTS_DISABLED !== '1') {
-  history.start()
-  ghosts.start()
-}
 
 function send(req: IncomingMessage, res: ServerResponse, status: number, body: unknown) {
   const json = Buffer.from(JSON.stringify(body))
@@ -73,7 +63,7 @@ function handleAircraft(req: IncomingMessage, res: ServerResponse, url: URL) {
     ...delta,
     now: Date.now(),
     stats: {
-      total: store.liveCount,
+      total: store.size,
       lastFetch: Math.max(scheduler.lastFetch ?? 0, airplanesLive.status.lastFetch ?? 0) || null,
       sweepSeconds: scheduler.sweepSeconds,
       rateLimited: scheduler.rateLimited,
@@ -123,38 +113,27 @@ createServer((req, res) => {
   if (req.method === 'GET' && url.pathname === '/api/health') {
     return send(req, res, 200, {
       ok: true,
-      aircraft: store.liveCount,
-      estimated: { ...ghosts.status, continuedChecks: ghosts.debug },
-      history: history.status,
+      aircraft: store.size,
       coverage: store.coverage(),
       adsbLol: { lastFetch: scheduler.lastFetch },
       opensky: opensky.status,
       airplanesLive: airplanesLive.status,
     })
   }
-  const detail = url.pathname.match(/^\/api\/(flight|trace)\/([0-9a-f~]{6,7}|s[0-9a-f]{6})$/i)
+  const detail = url.pathname.match(/^\/api\/(flight|trace)\/([0-9a-f~]{6,7})$/i)
   if (req.method === 'GET' && detail) {
-    const id = detail[2].toLowerCase()
-    const ghost = ghosts.details(id)
-    // Simulated flights: details come from yesterday's flight, not live data.
-    if (ghost?.kind === 'simulated') {
-      const body = detail[1] === 'flight' ? simulatedFlightInfo(id, ghost.flight!) : Promise.resolve({ hex: id, takeoff: null, points: [] })
-      body.then((b) => send(req, res, 200, b), (err) => send(req, res, 502, { error: (err as Error).message }))
-      return
-    }
-    const ac = store.get(id)
+    const hex = detail[2].toLowerCase()
+    const ac = store.get(hex)
     const job =
       detail[1] === 'flight'
         ? flightInfo(
-            id,
+            hex,
             (url.searchParams.get('cs') || ac?.[6] || '').trim().toUpperCase() || null,
             ac?.[8] ?? null,
             ac ? [ac[1], ac[2]] : null,
             ac?.[7] ?? ((url.searchParams.get('t') || '').trim().toUpperCase().slice(0, 4) || null),
-          ).then((info) =>
-            ghost?.kind === 'continued' ? { ...info, estimate: { kind: 'continued' as const, lastSeen: ghost.lastSeen } } : info,
           )
-        : flightTrace(id)
+        : flightTrace(hex)
     job.then(
       (body) => send(req, res, 200, body),
       (err) => send(req, res, 502, { error: (err as Error).message }),

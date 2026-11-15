@@ -19,7 +19,7 @@ export const ICON_LAYERS = Array.from({ length: BANDS }, (_, b) => iconLayerId(b
 const SELECTED_SOURCE = 'aircraft-selected'
 
 /** Which group an aircraft belongs to (stable: based on its ICAO address). */
-export const bandOf = (hex: string) => (parseInt(hex.slice(-2), 16) || 0) % BANDS
+export const bandOf = (hex: string) => parseInt(hex.slice(-2), 16) % BANDS || 0
 
 const HEAVY = /^(A3[3-5]|A38|B74|B77|B78|A30|A31|MD11|DC10|IL96|C17|C5|A400|B76|K35)/
 
@@ -46,7 +46,6 @@ const isSurfaceVehicle = (ac: AircraftTuple) => ac[F.Category]?.startsWith('C') 
 const isHeli = (ac: AircraftTuple) => ac[F.Category] === 'A7'
 
 function iconFor(ac: AircraftTuple) {
-  if (ac[F.Kind]) return ICON.ghost // estimated, not live
   const ground = ac[F.Alt] === -1
   if (isHeli(ac)) return ground ? ICON.heliGround : ICON.heliAir
   return ground ? ICON.ground : ICON.air
@@ -183,15 +182,12 @@ export function updateAircraftBand(
   view: ViewWindow | null,
   /** How many groups are in use: 1 when zoomed in (few aircraft), BANDS when zoomed out. */
   groups: number,
-  /** Which estimated kinds to include (Kind.Continued / Kind.Simulated); live is always included. */
-  showKinds: Set<number>,
 ) {
   const src = map.getSource(sourceId(band)) as GeoJSONSource | undefined
   if (!src) return 0
   const parts: string[] = []
   for (const ac of band < groups ? aircraft.values() : []) {
     if ((groups > 1 && bandOf(ac[F.Hex]) !== band) || isSurfaceVehicle(ac)) continue
-    if (ac[F.Kind] && !showKinds.has(ac[F.Kind]!)) continue
     const pos = extrapolate(ac, now)
     if (view) {
       const dLon = ((pos[0] - view.centerLon + 540) % 360) - 180
@@ -201,7 +197,7 @@ export function updateAircraftBand(
     parts.push(
       `{"type":"Feature","geometry":{"type":"Point","coordinates":[${pos[0].toFixed(5)},${pos[1].toFixed(5)}]},` +
         `"properties":{"hex":${JSON.stringify(ac[F.Hex])},"rot":${Math.round(ac[F.Track] ?? 0)},"icon":"${iconFor(ac)}",` +
-        `"s":${sizeFor(ac)},"cs":${JSON.stringify(cs)},"e":${!ac[F.Kind] && now - ac[F.PosTime] > ESTIMATED_AFTER_MS}}}`,
+        `"s":${sizeFor(ac)},"cs":${JSON.stringify(cs)},"e":${now - ac[F.PosTime] > ESTIMATED_AFTER_MS}}}`,
     )
   }
   const url = URL.createObjectURL(new Blob([`{"type":"FeatureCollection","features":[${parts.join(',')}]}`], { type: 'application/json' }))

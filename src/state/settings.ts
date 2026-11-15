@@ -4,13 +4,9 @@ export type UnitSystem = 'aviation' | 'metric' | 'imperial'
 
 export interface Settings {
   units: UnitSystem
-  /** Keep drawing real flights after they leave receiver coverage (estimated) */
-  ghostsContinued: boolean
-  /** Draw yesterday's flights where there's no live coverage (simulated) */
-  ghostsSimulated: boolean
 }
 
-const DEFAULTS: Settings = { units: 'aviation', ghostsContinued: true, ghostsSimulated: true }
+const DEFAULTS: Settings = { units: 'aviation' }
 const KEY = 'yun.settings'
 
 function load(): Settings {

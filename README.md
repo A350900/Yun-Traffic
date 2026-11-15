@@ -64,22 +64,6 @@ adsb.lol API ──► server/ (paced poller + in-memory store) ──► /api/a
   detection off. Tested with 20,000 synthetic aircraft: about 3–4 ms of main-thread work per
   1-second update.
 
-### Estimated aircraft (Settings → Estimated aircraft)
-
-Drawn as hollow outlines and labelled in the details panel; live data always replaces them
-(`server/ghosts.ts`, recomputed every 30 s):
-
-- **Continue out of coverage:** a cruising aircraft whose position has gone stale (left receiver
-  range, e.g. over an ocean) keeps flying along the great circle to its destination at its last
-  speed, until it should have landed or a newer real position arrives. Destination: where that
-  callsign flew yesterday (OpenSky history), else the adsbdb route.
-- **Simulated from yesterday:** OpenSky's flight history (`server/history.ts`) for the same time
-  yesterday, shifted +24 h and flown along the great circle between the two airports. Only shown
-  where live coverage is thin (a 2° cell with fewer than 3 live aircraft); in a covered area a
-  missing live aircraft means the flight probably isn't operating today. History has its own
-  OpenSky credit allowance (~30 credits per 2-hour window); only the windows needed for "now − 24 h"
-  are downloaded and cached in `.cache/`.
-
 ### Flight details (click an aircraft)
 
 `/api/flight/:hex` combines, server-side and cached: route + airline from [adsbdb](https://www.adsbdb.com)
@@ -117,7 +101,6 @@ seams), and repaints them with the palette in `src/layers/radarStyle.ts`.
 | `OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET` | – | OpenSky API client (put in `.env`; `yun opensky` does this) |
 | `OPENSKY_MIN_INTERVAL_S` | `45` | Never poll OpenSky faster than this |
 | `OPENSKY_DISABLED` | – | Set to `1` to turn OpenSky off |
-| `GHOSTS_DISABLED` | – | Set to `1` to turn estimated aircraft off on the server |
 | `AIRPLANESLIVE_INTERVAL_MS` | `1100` | Pace of airplanes.live requests (their limit is 1/s) |
 | `AIRPLANESLIVE_DISABLED` | – | Set to `1` to turn airplanes.live off |
 

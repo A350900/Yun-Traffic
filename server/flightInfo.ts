@@ -1,8 +1,8 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import { aircraftName } from './aircraftTypes.ts'
-import { AIRPORTS, type AirportRow } from './airports.ts'
 import type { FlightInfo, AirportInfo, FlightTrace } from '../shared/wire.ts'
-import type { PastFlight } from './history.ts'
 
 /**
  * Details for one aircraft, gathered when someone clicks it:
@@ -54,6 +54,10 @@ async function getJson<T>(url: string): Promise<T | null> {
 
 // ---------------------------------------------------------------- airports
 
+type AirportRow = [iata: string, name: string, city: string, country: string, lat: number, lon: number, tz: string]
+const AIRPORTS: Record<string, AirportRow> = JSON.parse(
+  readFileSync(join(import.meta.dirname, '..', 'data', 'airports.json'), 'utf8'),
+)
 
 interface AdsbdbAirport {
   icao_code: string
@@ -155,12 +159,6 @@ export function distanceKm(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 const settle = <T,>(p: Promise<T>) => p.catch(() => null)
 
-/** Destination airport for a callsign from the route database (cached). */
-export async function routeDestination(callsign: string): Promise<AirportInfo | null> {
-  const r = await settle(route(callsign))
-  return r?.destination ?? null
-}
-
 /**
  * Everything for the details panel. `pos` is the aircraft's current position,
  * used to sanity-check the route: the callsign database is crowd-sourced and
@@ -225,32 +223,6 @@ export async function flightInfo(
     },
     route: r ? { origin: r.origin, destination: r.destination, plausible: routeOk, originCorrected, verified: Boolean(tr) } : null,
     photo: ph,
-  }
-}
-
-function airportFromRow(icao: string): AirportInfo | null {
-  const r = AIRPORTS[icao]
-  return r ? { icao, iata: r[0], name: r[1], city: r[2], country: r[3], lat: r[4], lon: r[5], tz: r[6] } : null
-}
-
-/**
- * Details for a simulated flight: airline from its callsign, route from
- * yesterday's flight. No aircraft, registration or photo: tomorrow's
- * aircraft on a route is often a different one.
- */
-export async function simulatedFlightInfo(id: string, f: PastFlight): Promise<FlightInfo> {
-  const prefix = f.callsign.match(/^([A-Z]{3})\d/)?.[1]
-  const al = prefix ? await settle(airline(prefix)) : null
-  const origin = airportFromRow(f.dep)!
-  const destination = airportFromRow(f.arr)!
-  return {
-    hex: id,
-    callsign: f.callsign,
-    airline: al ? { name: al.name, icao: al.icao, iata: al.iata } : null,
-    aircraft: { typeCode: null, name: null, registration: null, owner: null },
-    route: { origin, destination, plausible: true, originCorrected: false, verified: true },
-    photo: null,
-    estimate: { kind: 'simulated', departed: (f.firstSeen + 86_400) * 1000, arrives: (f.lastSeen + 86_400) * 1000 },
   }
 }
 
