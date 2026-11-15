@@ -10,7 +10,9 @@
     "build": "tsc -b && vite build",
     "start": "tsx server/index.ts",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:sim": "tsx --test src/sim/*.test.ts",
+    "sim:calibrate": "tsx scripts/sim/calibrate.ts --write"
   },
   "dependencies": {
     "maplibre-gl": "^6.18.0",

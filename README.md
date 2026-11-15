@@ -85,6 +85,13 @@ phases; code in `server/sim/`, `shared/sim/`, `scripts/sim/` and data in
   inputs, and a recorder that saves live coverage per 2° cell and hour, totals
   per region and airlines seen (`.cache/sim/`, endpoints `/api/sim/coverage`,
   `/api/sim/stats`).
+- **Phase 1 (done):** the schedule model in `src/sim/` (`schedule.ts`, `model.ts`,
+  settings in `config.ts`): a deterministic daily timetable per route (airport
+  size, distance, local-time departure profiles, long-haul banks, month and
+  weekday factors), calibrated by `npm run sim:calibrate` to published regional
+  daily flights and the global airborne peak (`data/sim/calibration.json`).
+  Simulated aircraft are hidden within 40 nm of airports and fade in until 100 nm.
+  Tests: `npm run test:sim`.
 
 ### Weather radar
 
