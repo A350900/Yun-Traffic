@@ -5,11 +5,18 @@ interface Props {
   onChange: (next: LayerSettings) => void
 }
 
-const OPTIONS: { key: keyof LayerSettings; label: string; hint: string }[] = [
+type ToggleKey = { [K in keyof LayerSettings]: LayerSettings[K] extends boolean ? K : never }[keyof LayerSettings]
+
+const OPTIONS: { key: ToggleKey; label: string; hint: string }[] = [
   {
     key: 'dayNight',
     label: 'Day / night',
     hint: 'Night shading with civil, nautical and astronomical twilight. Updates every minute.',
+  },
+  {
+    key: 'radar',
+    label: 'Weather radar',
+    hint: 'Rain and storms from the past 2 hours. More options under Weather.',
   },
 ]
 

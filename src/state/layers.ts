@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
+import type { RadarStyle } from '../layers/radarStyle'
 
-/** Map overlays the user can switch on and off from the Layers menu. */
+/** Map overlays the user can switch on and off (Layers menu / Weather panel). */
 export interface LayerSettings {
   dayNight: boolean
+  radar: boolean
+  radarStyle: RadarStyle
+  radarOpacity: number
 }
 
-const DEFAULTS: LayerSettings = { dayNight: true }
+const DEFAULTS: LayerSettings = { dayNight: true, radar: false, radarStyle: 'cartoon', radarOpacity: 0.85 }
 const KEY = 'yun.layers'
 
 function load(): LayerSettings {

@@ -6,12 +6,19 @@ import FlightPanel from './components/FlightPanel'
 import FeedStatus from './components/FeedStatus'
 import type { FeedState } from './flights/feed'
 import { useLayerSettings } from './state/layers'
+import { RadarController } from './layers/radar'
 
 const synthetic = new URLSearchParams(location.search).has('stress')
 
 export default function App() {
   const [selected, setSelected] = useState<string | null>(null)
   const [layers, setLayers] = useLayerSettings()
+  const [radar] = useState(
+    () => new RadarController({ visible: layers.radar, style: layers.radarStyle, opacity: layers.radarOpacity }),
+  )
+  useEffect(() => radar.setVisible(layers.radar), [radar, layers.radar])
+  useEffect(() => radar.setStyle(layers.radarStyle), [radar, layers.radarStyle])
+  useEffect(() => radar.setOpacity(layers.radarOpacity), [radar, layers.radarOpacity])
   const feedRef = useRef<FeedState | null>(null)
   // Re-render the overlays once a second (clock-style), not on every data change.
   const [now, setNow] = useState(() => Date.now())
@@ -29,7 +36,7 @@ export default function App() {
 
   return (
     <main className="app">
-      <FlightMap selected={selected} onSelect={setSelected} onFeed={onFeed} dayNight={layers.dayNight} />
+      <FlightMap selected={selected} onSelect={setSelected} onFeed={onFeed} dayNight={layers.dayNight} radar={radar} />
       <TopBar />
       {selected && (
         <FlightPanel
@@ -46,7 +53,7 @@ export default function App() {
         now={serverNow}
         synthetic={synthetic}
       />
-      <BottomDock layers={layers} onLayersChange={setLayers} />
+      <BottomDock layers={layers} onLayersChange={setLayers} radar={radar} />
     </main>
   )
 }

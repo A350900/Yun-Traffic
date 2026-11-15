@@ -62,6 +62,15 @@ adsb.lol API ──► server/ (paced poller + in-memory store) ──► /api/a
   detection off. Tested with 20,000 synthetic aircraft: about 3–4 ms of main-thread work per
   1-second update.
 
+### Weather radar
+
+RainViewer's free radar tiles (past 2 h, 10-minute frames, zoom ≤ 7, attribution required).
+`src/layers/radar.ts` double-buffers two raster layers for flicker-free playback. The **cartoon**
+style runs tiles through a `yunradar://` protocol handler and a Web Worker
+(`src/layers/radarWorker.ts`) that classifies RainViewer's colours into four bands, blurs and
+re-thresholds each band into smooth blobs (borrowing a margin from neighbouring tiles so there are no
+seams), and repaints them with the palette in `src/layers/radarStyle.ts`.
+
 ### Useful URLs
 
 - `/#7/51.47/-0.45` — the map view lives in the URL hash (zoom/lat/lon).

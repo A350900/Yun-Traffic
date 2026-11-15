@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { FilterIcon, LayersIcon, PlaybackIcon, SettingsIcon, StatsIcon, WeatherIcon } from './Icons'
 import LayersMenu from './LayersMenu'
+import WeatherPanel from './WeatherPanel'
+import type { RadarController } from '../layers/radar'
 import type { LayerSettings } from '../state/layers'
 
 const ITEMS: { id: string; label: string; icon: ReactNode }[] = [
@@ -15,9 +17,10 @@ const ITEMS: { id: string; label: string; icon: ReactNode }[] = [
 interface Props {
   layers: LayerSettings
   onLayersChange: (next: LayerSettings) => void
+  radar: RadarController
 }
 
-export default function BottomDock({ layers, onLayersChange }: Props) {
+export default function BottomDock({ layers, onLayersChange, radar }: Props) {
   const [active, setActive] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -39,13 +42,14 @@ export default function BottomDock({ layers, onLayersChange }: Props) {
   return (
     <div className="dock-wrap" ref={ref}>
       {active === 'layers' && <LayersMenu layers={layers} onChange={onLayersChange} />}
+      {active === 'weather' && <WeatherPanel radar={radar} layers={layers} onChange={onLayersChange} />}
       <nav className="dock" aria-label="Map tools">
         {ITEMS.map((item) => (
           <button
             key={item.id}
             className={active === item.id ? 'active' : ''}
             aria-pressed={active === item.id}
-            aria-expanded={item.id === 'layers' ? active === 'layers' : undefined}
+            aria-expanded={item.id === 'layers' || item.id === 'weather' ? active === item.id : undefined}
             onClick={() => setActive(active === item.id ? null : item.id)}
           >
             {item.icon}

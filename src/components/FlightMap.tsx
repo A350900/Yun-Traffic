@@ -9,6 +9,7 @@ import { LocateIcon, MinusIcon, PlusIcon } from './Icons'
 import { startFeed, startStressFeed, type FeedState, type FocusHint } from '../flights/feed'
 import { addAircraftLayers, LAYER, setSelected, updateAircraftSource } from '../flights/layer'
 import { addDayNightLayer, setDayNightVisible, updateDayNight } from '../layers/dayNight'
+import type { RadarController } from '../layers/radar'
 
 const theme = THEMES[ACTIVE_THEME]
 setWorkerUrl(workerUrl)
@@ -24,6 +25,7 @@ interface Props {
   onFeed: (state: FeedState) => void
   /** Show the day/night (solar terminator) overlay */
   dayNight: boolean
+  radar: RadarController
 }
 
 /** Rough radius of the visible area in nautical miles. */
@@ -35,7 +37,7 @@ function focusFor(map: MLMap): FocusHint | null {
   return { lat: c.lat, lon: c.lng, radiusNm: Math.max(radiusNm, 25) }
 }
 
-export default function FlightMap({ selected, onSelect, onFeed, dayNight }: Props) {
+export default function FlightMap({ selected, onSelect, onFeed, dayNight, radar }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
   const onSelectRef = useRef(onSelect)
@@ -89,6 +91,7 @@ export default function FlightMap({ selected, onSelect, onFeed, dayNight }: Prop
       // Day/night first so it sits underneath the aircraft.
       addDayNightLayer(map, dayNightRef.current)
       dayNightTimer = window.setInterval(() => updateDayNight(map), 60_000)
+      radar.attach(map) // above day/night, below labels and aircraft
       addAircraftLayers(map)
       render()
       renderTimer = window.setInterval(render, RENDER_MS)
@@ -110,6 +113,7 @@ export default function FlightMap({ selected, onSelect, onFeed, dayNight }: Prop
     return () => {
       clearInterval(renderTimer)
       clearInterval(dayNightTimer)
+      radar.detach()
       feed.stop()
       map.remove()
       mapRef.current = null
