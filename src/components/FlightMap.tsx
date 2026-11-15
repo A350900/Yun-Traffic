@@ -142,9 +142,10 @@ function FlightMap({ selected, onSelect, onFeed, dayNight, radar }: Props) {
         // Panned past the area we sent aircraft for: fill it in right away.
         if (lastWindow && !covers(lastWindow, map)) return draw()
         // Big updates (thousands of aircraft, zoomed out) wait until the gesture
-        // ends so dragging stays smooth; there, motion is sub-pixel anyway.
+        // ends so dragging stays smooth; at those zooms aircraft move less than
+        // a pixel in 10 s, so nothing visible is lost.
         // Zoomed in, updates are small, so aircraft keep moving while you drag.
-        if (lastSent > HOLD_DURING_GESTURE_ABOVE && since < 2500) return
+        if (lastSent > HOLD_DURING_GESTURE_ABOVE && since < 10_000) return
       }
       if (needsDraw || since >= redrawInterval(map)) draw()
     }
