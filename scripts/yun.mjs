@@ -7,7 +7,7 @@
 //   yun status   is it running?
 //   yun update   get the latest changes from GitHub right now
 //
-// While running it also checks GitHub every 15 seconds and pulls new
+// While running it also checks GitHub every 30 seconds and pulls new
 // changes, which show up in the browser by themselves.
 
 import { spawn, spawnSync } from 'node:child_process'
@@ -24,7 +24,7 @@ const LOG_FILE = join(LOG_DIR, 'autorun.log')
 const PID_FILE = join(LOG_DIR, 'autorun.pid')
 const IS_WIN = process.platform === 'win32'
 const IS_MAC = process.platform === 'darwin'
-const CHECK_EVERY_MS = 15_000
+const CHECK_EVERY_MS = 30_000
 const URL = 'http://localhost:5173'
 
 const SCRIPT = fileURLToPath(import.meta.url)

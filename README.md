@@ -15,7 +15,7 @@ yun status
 yun update    # pull the latest changes from GitHub right now
 ```
 
-While running it also pulls new commits from GitHub every 15 seconds; the page updates itself.
+While running it also pulls new commits from GitHub every 30 seconds; the page updates itself.
 If you move the folder, run setup again. `node scripts/yun.mjs remove` uninstalls the
 command. Logs: `logs/autorun.log`.
 
