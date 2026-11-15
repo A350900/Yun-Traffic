@@ -1,3 +1,6 @@
+import { mkdirSync, readFileSync } from 'node:fs'
+import { writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import type { AircraftTuple } from '../shared/wire.ts'
 import type { AircraftStore } from './store.ts'
 
@@ -21,6 +24,24 @@ const TOKEN_URL = 'https://auth.opensky-network.org/auth/realms/opensky-network/
 const CREDITS_PER_CALL = 4
 const MIN_INTERVAL_S = Number(process.env.OPENSKY_MIN_INTERVAL_S ?? 45)
 const MAX_INTERVAL_S = 30 * 60
+
+/**
+ * The last snapshot and schedule are saved to disk, so a restart (which
+ * happens on every code update) reuses them instead of spending credits
+ * right away. Anonymous access only has 400 credits (100 snapshots) a day.
+ */
+const CACHE_DIR = join(import.meta.dirname, '..', '.cache')
+const CACHE_FILE = join(CACHE_DIR, 'opensky.json')
+const CACHE_MAX_AGE_MS = 15 * 60_000
+
+interface SavedState {
+  savedAt: number
+  authenticated: boolean
+  creditsRemaining: number | null
+  nextFetch: number | null
+  error: string | null
+  aircraft: AircraftTuple[]
+}
 
 const M_TO_FT = 3.28084
 const MS_TO_KT = 1.943844
@@ -98,7 +119,59 @@ export class OpenSkyPoller {
   start() {
     if (!this.status.enabled) return
     console.log(`[opensky] ${this.hasCredentials ? 'using your API client' : 'anonymous (run "yun opensky" to add your account)'}`)
-    void this.loop()
+    const wait = this.restore()
+    if (wait > 0) {
+      console.log(`[opensky] reusing saved snapshot; next request in ${Math.round(wait / 1000)}s (saves credits on restart)`)
+      this.status.nextFetch = Date.now() + wait
+      this.timer = setTimeout(() => void this.loop(), wait)
+    } else {
+      void this.loop()
+    }
+  }
+
+  /** Load the saved snapshot/schedule. Returns ms to wait before the next request (0 = now). */
+  private restore(): number {
+    try {
+      const saved = JSON.parse(readFileSync(CACHE_FILE, 'utf8')) as SavedState
+      const age = Date.now() - saved.savedAt
+      // Switched between anonymous and an account: limits differ, start fresh.
+      if (saved.authenticated !== this.hasCredentials) return 0
+      if (age < CACHE_MAX_AGE_MS) {
+        for (const t of saved.aircraft) this.store.upsert(t, 'opensky')
+        this.status.lastFetch = saved.savedAt
+        this.status.lastCount = saved.aircraft.length
+      }
+      this.status.creditsRemaining = saved.creditsRemaining
+      this.status.error = saved.error
+      return saved.nextFetch ? Math.max(0, saved.nextFetch - Date.now()) : 0
+    } catch {
+      return 0 // nothing saved yet
+    }
+  }
+
+  private save(aircraft: AircraftTuple[] | null) {
+    let previous: AircraftTuple[] = []
+    if (!aircraft) {
+      try {
+        previous = (JSON.parse(readFileSync(CACHE_FILE, 'utf8')) as SavedState).aircraft
+      } catch {
+        /* none */
+      }
+    }
+    const state: SavedState = {
+      savedAt: aircraft ? Date.now() : (this.status.lastFetch ?? 0),
+      authenticated: this.hasCredentials,
+      creditsRemaining: this.status.creditsRemaining,
+      nextFetch: this.status.nextFetch,
+      error: this.status.error,
+      aircraft: aircraft ?? previous,
+    }
+    try {
+      mkdirSync(CACHE_DIR, { recursive: true })
+    } catch {
+      /* exists */
+    }
+    writeFile(CACHE_FILE, JSON.stringify(state)).catch((err) => console.warn('[opensky] could not save snapshot:', err.message))
   }
 
   stop() {
@@ -158,7 +231,9 @@ export class OpenSkyPoller {
         const retry = Number(res.headers.get('x-rate-limit-retry-after-seconds')) || 3600
         this.status.error = `out of OpenSky credits for now; next try in ${Math.round(retry / 60)} min`
         console.warn(`[opensky] ${this.status.error}`)
-        return this.schedule(retry)
+        this.schedule(retry)
+        this.save(null) // remember not to retry early after a restart
+        return
       }
       if (res.status === 401) {
         await res.body?.cancel()
@@ -171,20 +246,22 @@ export class OpenSkyPoller {
       }
 
       const body = (await res.json()) as { time: number; states: State[] | null }
-      let count = 0
+      const tuples: AircraftTuple[] = []
       for (const s of body.states ?? []) {
         const t = toTuple(s)
         if (t) {
           this.store.upsert(t, 'opensky')
-          count++
+          tuples.push(t)
         }
       }
+      const count = tuples.length
       this.status.lastFetch = Date.now()
       this.status.lastCount = count
       this.status.error = null
       const next = this.status.creditsRemaining != null ? this.paceFromCredits(this.status.creditsRemaining) : 90
       console.log(`[opensky] ${count} aircraft; ${this.status.creditsRemaining ?? '?'} credits left; next in ${Math.round(Math.max(MIN_INTERVAL_S, next))}s`)
       this.schedule(next)
+      this.save(tuples)
     } catch (err) {
       this.status.error = (err as Error).message
       console.warn(`[opensky] ${this.status.error}`)

@@ -47,6 +47,11 @@ export default function FeedStatus({ count, stats, error, now, synthetic }: Prop
       const ago = Math.max(0, Math.round((now - last) / 1000))
       detail = ago < 60 ? `updated ${ago}s ago` : `updated ${Math.floor(ago / 60)}m ago`
       if (ago > 180) state = 'warn'
+      // The main source being down matters: say so right on the pill.
+      if (stats?.opensky?.enabled && stats.opensky.error) {
+        state = 'warn'
+        detail = 'OpenSky unavailable · hover for details'
+      }
     }
   }
 
