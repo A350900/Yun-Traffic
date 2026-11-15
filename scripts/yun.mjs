@@ -225,6 +225,42 @@ async function update() {
  * Save OpenSky credentials to .env (stays on this computer, never committed).
  * Accepts the credentials.json file OpenSky gives you, or the ID and secret.
  */
+/** Remove quotes, trailing commas and spaces people often copy along with a value. */
+const cleanValue = (v) => v.trim().replace(/,$/, '').trim().replace(/^["']|["']$/g, '').trim()
+
+/** Ask OpenSky for a token, the documented way (form body) and then with Basic auth. */
+async function testOpenSkyLogin(id, secret) {
+  const url = 'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token'
+  const tries = [
+    { headers: {}, body: new URLSearchParams({ grant_type: 'client_credentials', client_id: id, client_secret: secret }) },
+    {
+      headers: { Authorization: `Basic ${Buffer.from(`${encodeURIComponent(id)}:${encodeURIComponent(secret)}`).toString('base64')}` },
+      body: new URLSearchParams({ grant_type: 'client_credentials' }),
+    },
+  ]
+  let last = ''
+  for (const t of tries) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...t.headers },
+        body: t.body.toString(),
+        signal: AbortSignal.timeout(15_000),
+      })
+      if (res.ok) return { ok: true }
+      last = `HTTP ${res.status} ${(await res.text()).slice(0, 160)}`
+    } catch (err) {
+      last = err.message
+    }
+  }
+  return { ok: false, error: last }
+}
+
+/**
+ * Save OpenSky credentials to .env (stays on this computer, never committed).
+ * Accepts the credentials.json file OpenSky gives you, its pasted contents,
+ * or the ID and secret typed separately. Tests the login before finishing.
+ */
 async function openskySetup() {
   console.log('OpenSky account setup')
   console.log('In your OpenSky account page, create an API client and download credentials.json.\n')
@@ -232,19 +268,45 @@ async function openskySetup() {
   let id = ''
   let secret = ''
   try {
-    const first = (await rl.question('Drag credentials.json here and press Enter (or type your Client ID): ')).trim().replace(/^["']|["']$/g, '')
-    if (first.toLowerCase().endsWith('.json') && existsSync(first)) {
-      const json = JSON.parse(readFileSync(first, 'utf8'))
-      id = json.clientId ?? json.client_id ?? ''
-      secret = json.clientSecret ?? json.client_secret ?? ''
-    } else {
-      id = first
-      secret = (await rl.question('Client secret: ')).trim()
+    const first = (await rl.question('Drag credentials.json here and press Enter (or type your Client ID): ')).trim()
+    const path = cleanValue(first)
+    const fromJson = (text) => {
+      const json = JSON.parse(text)
+      return [json.clientId ?? json.client_id ?? '', json.clientSecret ?? json.client_secret ?? '']
     }
+    if (path.toLowerCase().endsWith('.json') && existsSync(path)) {
+      ;[id, secret] = fromJson(readFileSync(path, 'utf8'))
+    } else if (first.startsWith('{')) {
+      ;[id, secret] = fromJson(first) // the file's contents were pasted
+    } else {
+      id = cleanValue(first)
+      secret = cleanValue(await rl.question('Client secret: '))
+    }
+  } catch (err) {
+    console.log(`\nCould not read that: ${err.message}`)
   } finally {
     rl.close()
   }
+  id = cleanValue(String(id))
+  secret = cleanValue(String(secret))
   if (!id || !secret) return console.log('\nNothing saved: the client ID or secret was empty.')
+
+  const masked = secret.length > 6 ? `${secret.slice(0, 3)}…${secret.slice(-3)} (${secret.length} characters)` : `(${secret.length} characters)`
+  console.log(`\nClient ID: ${id}`)
+  console.log(`Secret:    ${masked}`)
+  process.stdout.write('Checking with OpenSky... ')
+  const test = await testOpenSkyLogin(id, secret)
+  if (test.ok) {
+    console.log('OpenSky accepted your API client.')
+  } else {
+    console.log('OpenSky did NOT accept it.')
+    console.log(`  (${test.error})`)
+    console.log('\n  Things to check:')
+    console.log('  - The Client ID is the API client\'s ID (often "yourname-api-client"), not your website username.')
+    console.log('  - The secret belongs to that same client. If you reset or recreated the client, use the new one.')
+    console.log('  - Easiest: drag the credentials.json file instead of typing.')
+    console.log('\n  Saving anyway, so you can see the error in the app too. Run "yun opensky" again to fix it.')
+  }
 
   const envFile = join(ROOT, '.env')
   const kept = existsSync(envFile)
