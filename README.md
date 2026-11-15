@@ -4,6 +4,12 @@ Live flight tracking on a 2D map: MapLibre GL + OpenFreeMap tiles, aircraft data
 
 ## Run it
 
+**Easiest:** double-click `start-windows.bat` (Windows) or `start-mac.command` (Mac).
+It pulls the latest changes, installs anything new, starts the site and opens
+http://localhost:5173. Keep the window open while using the site.
+
+Or by hand:
+
 ```bash
 npm install
 npm run dev        # API on :8787 + Vite on :5173 (open http://localhost:5173)
