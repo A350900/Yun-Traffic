@@ -62,4 +62,12 @@ export interface FeedStats {
   /** How long a full sweep of all aircraft types takes at the current pacing, seconds */
   sweepSeconds: number
   rateLimited: boolean
+  opensky?: {
+    enabled: boolean
+    /** Using the owner's OpenSky account (vs anonymous, much lower limits) */
+    authenticated: boolean
+    lastFetch: number | null
+    nextFetch: number | null
+    error: string | null
+  }
 }

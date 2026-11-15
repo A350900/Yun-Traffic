@@ -1,9 +1,11 @@
+import './env.ts'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { createReadStream, existsSync, statSync } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
 import { gzipSync } from 'node:zlib'
 import { AircraftStore } from './store.ts'
 import { Scheduler } from './scheduler.ts'
+import { OpenSkyPoller } from './opensky.ts'
 import type { AircraftResponse } from '../shared/wire.ts'
 
 // Honour HTTPS_PROXY when one is set (e.g. in sandboxed/corporate networks).
@@ -18,6 +20,8 @@ const DIST = join(import.meta.dirname, '..', 'dist')
 const store = new AircraftStore()
 const scheduler = new Scheduler(store)
 scheduler.start()
+const opensky = new OpenSkyPoller(store)
+opensky.start()
 
 function send(req: IncomingMessage, res: ServerResponse, status: number, body: unknown) {
   const json = Buffer.from(JSON.stringify(body))
@@ -56,6 +60,13 @@ function handleAircraft(req: IncomingMessage, res: ServerResponse, url: URL) {
       lastFetch: scheduler.lastFetch,
       sweepSeconds: scheduler.sweepSeconds,
       rateLimited: scheduler.rateLimited,
+      opensky: {
+        enabled: opensky.status.enabled,
+        authenticated: opensky.status.authenticated,
+        lastFetch: opensky.status.lastFetch,
+        nextFetch: opensky.status.nextFetch,
+        error: opensky.status.error,
+      },
     },
   }
   send(req, res, 200, body)
@@ -92,7 +103,7 @@ createServer((req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost')
   if (req.method === 'GET' && url.pathname === '/api/aircraft') return handleAircraft(req, res, url)
   if (req.method === 'GET' && url.pathname === '/api/health') {
-    return send(req, res, 200, { ok: true, aircraft: store.size, lastFetch: scheduler.lastFetch })
+    return send(req, res, 200, { ok: true, aircraft: store.size, adsbLol: { lastFetch: scheduler.lastFetch }, opensky: opensky.status })
   }
   if (url.pathname.startsWith('/api/')) return send(req, res, 404, { error: 'not found' })
   serveStatic(res, url.pathname)

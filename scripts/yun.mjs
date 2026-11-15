@@ -6,6 +6,7 @@
 //   yun stop     stop it (frees all memory it was using)
 //   yun status   is it running?
 //   yun update   get the latest changes from GitHub right now
+//   yun opensky  save your OpenSky API client (more frequent worldwide updates)
 //
 // While running it also checks GitHub every 30 seconds and pulls new
 // changes, which show up in the browser by themselves.
@@ -15,6 +16,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, createWriteStream } from 'node:fs'
 import { homedir } from 'node:os'
 import { setTimeout as sleep } from 'node:timers/promises'
+import { createInterface } from 'node:readline/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -219,6 +221,48 @@ async function update() {
   else console.log('Type "yun start" to run it.')
 }
 
+/**
+ * Save OpenSky credentials to .env (stays on this computer, never committed).
+ * Accepts the credentials.json file OpenSky gives you, or the ID and secret.
+ */
+async function openskySetup() {
+  console.log('OpenSky account setup')
+  console.log('In your OpenSky account page, create an API client and download credentials.json.\n')
+  const rl = createInterface({ input: process.stdin, output: process.stdout })
+  let id = ''
+  let secret = ''
+  try {
+    const first = (await rl.question('Drag credentials.json here and press Enter (or type your Client ID): ')).trim().replace(/^["']|["']$/g, '')
+    if (first.toLowerCase().endsWith('.json') && existsSync(first)) {
+      const json = JSON.parse(readFileSync(first, 'utf8'))
+      id = json.clientId ?? json.client_id ?? ''
+      secret = json.clientSecret ?? json.client_secret ?? ''
+    } else {
+      id = first
+      secret = (await rl.question('Client secret: ')).trim()
+    }
+  } finally {
+    rl.close()
+  }
+  if (!id || !secret) return console.log('\nNothing saved: the client ID or secret was empty.')
+
+  const envFile = join(ROOT, '.env')
+  const kept = existsSync(envFile)
+    ? readFileSync(envFile, 'utf8').split(/\r?\n/).filter((l) => l.trim() && !/^OPENSKY_CLIENT_(ID|SECRET)=/.test(l))
+    : []
+  writeFileSync(envFile, [...kept, `OPENSKY_CLIENT_ID=${id}`, `OPENSKY_CLIENT_SECRET=${secret}`, ''].join('\n'))
+  console.log('\nSaved to .env in the Yun-Traffic folder (only on this computer).')
+
+  if (runningPid()) {
+    console.log('Restarting so it takes effect...')
+    stop()
+    await sleep(1500)
+    await start()
+  } else {
+    console.log('Type "yun start" to use it.')
+  }
+}
+
 // ---------------------------------------------------------------- setup
 
 function removeOldAutostart() {
@@ -276,7 +320,8 @@ if (cmd === 'run') run()
 else if (cmd === 'start') await start()
 else if (cmd === 'stop') stop()
 else if (cmd === 'update') await update()
+else if (cmd === 'opensky') await openskySetup()
 else if (cmd === 'status') console.log(runningPid() ? `Running: ${URL}` : 'Not running. Type "yun start".')
 else if (cmd === 'setup') setup()
 else if (cmd === 'remove') removeSetup()
-else console.log('Usage: yun start | yun stop | yun status | yun update')
+else console.log('Usage: yun start | yun stop | yun status | yun update | yun opensky')

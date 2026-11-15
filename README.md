@@ -13,6 +13,7 @@ yun start     # starts in the background, then open http://localhost:5173
 yun stop      # stops it and frees its memory (~380 MB while running)
 yun status
 yun update    # pull the latest changes from GitHub right now
+yun opensky   # save your OpenSky API client (worldwide updates every ~90s instead of ~8 min)
 ```
 
 While running it also pulls new commits from GitHub every 30 seconds; the page updates itself.
@@ -42,13 +43,14 @@ adsb.lol API ──► server/ (paced poller + in-memory store) ──► /api/a
                                                  ──► GeoJSON source ──► WebGL symbol layer
 ```
 
-- **No "all aircraft" endpoint exists on adsb.lol**, and it rate-limits hard (~15-request bursts,
-  then ~30s cooldown). `server/scheduler.ts` runs one paced request loop that:
-  - sweeps the world **by aircraft type** (`/v2/type/B738`, …), polling busy types more often and
-    learning new types as it sees them;
-  - fetches **everything within 250 nm** of where users are zoomed in (zoom ≥ 5), so the area on
-    screen is complete and fresher;
-  - backs off on HTTP 429 and speeds up again on success.
+- **Two data sources, merged by aircraft (ICAO hex), newest position wins:**
+  - **OpenSky Network** (`server/opensky.ts`): one `/states/all` request returns every aircraft
+    worldwide. Paced from OpenSky's "credits remaining" header so the daily allowance is never
+    exceeded: ~every 8 min anonymous, ~90 s with a free account (`yun opensky`).
+  - **adsb.lol** (`server/scheduler.ts`): no "all aircraft" endpoint and strict rate limits, so a
+    paced loop sweeps the world **by aircraft type** (which also supplies type + registration,
+    which OpenSky lacks) and fetches **everything within 250 nm** of where users are zoomed in.
+- Type/registration are remembered per aircraft for 24 h and filled into OpenSky positions.
 - `/api/aircraft?since=<version>` returns only aircraft that changed since the client's last poll.
 - The browser projects each aircraft forward along its track at its ground speed (max 4 min),
   so planes keep moving between updates.
@@ -69,7 +71,10 @@ adsb.lol API ──► server/ (paced poller + in-memory store) ──► /api/a
 | `PORT` | `8787` | API/server port |
 | `POLL_INTERVAL_MS` | `4000` | Fastest pace for adsb.lol requests |
 | `ADSB_API_BASE` | `https://api.adsb.lol` | Upstream API |
+| `OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET` | – | OpenSky API client (put in `.env`; `yun opensky` does this) |
+| `OPENSKY_MIN_INTERVAL_S` | `45` | Never poll OpenSky faster than this |
+| `OPENSKY_DISABLED` | – | Set to `1` to turn OpenSky off |
 
 Map style and logo variant: `src/config/theme.ts`.
 
-Aircraft data © adsb.lol contributors, ODbL. Map © OpenFreeMap / OpenMapTiles / OpenStreetMap.
+Aircraft data © adsb.lol contributors (ODbL) and The OpenSky Network (non-commercial use). Map © OpenFreeMap / OpenMapTiles / OpenStreetMap.

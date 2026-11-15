@@ -63,7 +63,8 @@ export default function FlightMap({ selected, onSelect, onFeed, dayNight }: Prop
       touchPitch: false,
       attributionControl: {
         compact: true,
-        customAttribution: 'Aircraft data © <a href="https://adsb.lol" target="_blank">adsb.lol</a> (ODbL)',
+        customAttribution:
+          'Aircraft data © <a href="https://adsb.lol" target="_blank">adsb.lol</a> (ODbL), <a href="https://opensky-network.org" target="_blank">The OpenSky Network</a>',
       },
     })
     mapRef.current = map
