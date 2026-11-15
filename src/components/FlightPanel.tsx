@@ -4,22 +4,16 @@ import type { SelectionStore } from '../flights/selection'
 import { distanceKm } from '../flights/geo'
 import { extrapolate } from '../flights/position'
 import { ALTITUDE_STOPS } from '../flights/pathLayer'
+import type { UnitSystem } from '../state/settings'
+import { altitudeLegend, fmtAltitude, fmtDistance, fmtSpeed, fmtVerticalRate } from '../units'
 
 interface Props {
   aircraft: AircraftTuple | undefined
   hex: string
   now: number
   selection: SelectionStore
+  units: UnitSystem
   onClose: () => void
-}
-
-const fmt = (n: number | null | undefined, unit: string, digits = 0) =>
-  n == null ? '—' : `${n.toLocaleString(undefined, { maximumFractionDigits: digits })} ${unit}`
-
-function altitude(alt: number | null) {
-  if (alt === -1) return 'On ground'
-  if (alt == null) return '—'
-  return alt >= 18000 ? `FL${Math.round(alt / 100)}` : `${alt.toLocaleString()} ft`
 }
 
 function age(ms: number) {
@@ -67,7 +61,7 @@ const PLANE_ICON = (
   </svg>
 )
 
-export default function FlightPanel({ aircraft: ac, hex, now, selection, onClose }: Props) {
+export default function FlightPanel({ aircraft: ac, hex, now, selection, units, onClose }: Props) {
   const sel = useSyncExternalStore(selection.subscribe, selection.getState)
   const info = sel.info?.hex === hex ? sel.info : null
   const trace = sel.trace?.hex === hex ? sel.trace : null
@@ -130,14 +124,15 @@ export default function FlightPanel({ aircraft: ac, hex, now, selection, onClose
                 </div>
                 <div className="bar-labels">
                   <span>
-                    {Math.round(progress.flownKm).toLocaleString()} km{progress.elapsed && `, ${progress.elapsed} ago`}
+                    {fmtDistance(progress.flownKm, units)}{progress.elapsed && `, ${progress.elapsed} ago`}
                   </span>
                   <span>
-                    {Math.round(progress.leftKm).toLocaleString()} km{progress.eta && `, in ${progress.eta}`}
+                    {fmtDistance(progress.leftKm, units)}{progress.eta && `, in ${progress.eta}`}
                   </span>
                 </div>
               </div>
             )}
+            {route.plausible && !sel.originChecked && <p className="route-note info checking">Checking departure airport…</p>}
             {(!route.plausible || route.originCorrected) && (
               <p className={`route-note${route.plausible ? ' info' : ''}`}>
                 {!route.plausible
@@ -174,10 +169,10 @@ export default function FlightPanel({ aircraft: ac, hex, now, selection, onClose
 
       {ac ? (
         <dl>
-          <div><dt>Altitude</dt><dd>{altitude(ac[F.Alt])}</dd></div>
-          <div><dt>Ground speed</dt><dd>{fmt(ac[F.Gs], 'kt')}</dd></div>
+          <div><dt>Altitude</dt><dd>{fmtAltitude(ac[F.Alt], units)}</dd></div>
+          <div><dt>Ground speed</dt><dd>{fmtSpeed(ac[F.Gs], units)}</dd></div>
           <div><dt>Track</dt><dd>{ac[F.Track] == null ? '—' : `${Math.round(ac[F.Track]!)}°`}</dd></div>
-          <div><dt>Vertical rate</dt><dd>{fmt(ac[F.VRate], 'ft/min')}</dd></div>
+          <div><dt>Vertical rate</dt><dd>{fmtVerticalRate(ac[F.VRate], units)}</dd></div>
           <div><dt>Squawk</dt><dd>{ac[F.Squawk] ?? '—'}</dd></div>
           <div><dt>Category</dt><dd>{ac[F.Category] ?? '—'}</dd></div>
           <div className="wide">
@@ -196,9 +191,9 @@ export default function FlightPanel({ aircraft: ac, hex, now, selection, onClose
                   style={{ background: `linear-gradient(90deg, ${ALTITUDE_STOPS.map(([, c]) => c).join(', ')})` }}
                 />
                 <span className="alt-labels dim">
-                  <span>Ground</span>
-                  <span>20,000 ft</span>
-                  <span>40,000+</span>
+                  {altitudeLegend(units).map((l) => (
+                    <span key={l}>{l}</span>
+                  ))}
                 </span>
               </dd>
             </div>

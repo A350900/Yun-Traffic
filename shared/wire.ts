@@ -91,8 +91,11 @@ export interface FlightInfo {
   callsign: string | null
   airline: { name: string; icao: string; iata: string | null } | null
   aircraft: { typeCode: string | null; name: string | null; registration: string | null; owner: string | null }
-  /** `plausible` is false when the aircraft's position doesn't fit the route (stale database entry) */
-  route: { origin: AirportInfo; destination: AirportInfo; plausible: boolean; originCorrected: boolean } | null
+  /**
+   * `plausible`: false when the aircraft's position doesn't fit the route (stale database entry).
+   * `verified`: the departure airport was checked against where the aircraft actually took off.
+   */
+  route: { origin: AirportInfo; destination: AirportInfo; plausible: boolean; originCorrected: boolean; verified: boolean } | null
   /** planespotters.net photo; must be shown with the photographer credit and link */
   photo: { src: string; link: string; photographer: string } | null
 }
@@ -103,4 +106,8 @@ export interface FlightTrace {
   takeoff: number | null
   /** [epoch ms, lat, lon, altitude ft (-1 = on ground)] */
   points: [number, number, number, number][]
+  /** true when the full history couldn't be fetched (only recent points) */
+  partial?: boolean
+  /** Aircraft details that come with the trace (fallback for the details panel) */
+  aircraft?: { type: string | null; registration: string | null; desc: string | null } | null
 }

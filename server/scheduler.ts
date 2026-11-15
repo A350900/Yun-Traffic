@@ -17,7 +17,9 @@ import { SEED_TYPES } from './types.ts'
  * Pacing adapts: a 429 slows us down, successes slowly speed us back up.
  */
 
-const MIN_INTERVAL = Number(process.env.POLL_INTERVAL_MS ?? 4000)
+// Slower than adsb.lol's limit on purpose: OpenSky and adsb.fi now provide
+// most coverage, and this leaves room for flight-path lookups on click.
+const MIN_INTERVAL = Number(process.env.POLL_INTERVAL_MS ?? 6000)
 const MAX_INTERVAL = 20_000
 const MAX_TYPES = 200
 const FOCUS_COOLDOWN_MS = 20_000

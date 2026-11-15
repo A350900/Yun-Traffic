@@ -121,7 +121,13 @@ createServer((req, res) => {
     const ac = store.get(hex)
     const job =
       detail[1] === 'flight'
-        ? flightInfo(hex, (url.searchParams.get('cs') || ac?.[6] || '').trim().toUpperCase() || null, ac?.[8] ?? null, ac ? [ac[1], ac[2]] : null)
+        ? flightInfo(
+            hex,
+            (url.searchParams.get('cs') || ac?.[6] || '').trim().toUpperCase() || null,
+            ac?.[8] ?? null,
+            ac ? [ac[1], ac[2]] : null,
+            ac?.[7] ?? ((url.searchParams.get('t') || '').trim().toUpperCase().slice(0, 4) || null),
+          )
         : flightTrace(hex)
     job.then(
       (body) => send(req, res, 200, body),

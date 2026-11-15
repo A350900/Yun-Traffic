@@ -6,6 +6,7 @@ import FlightPanel from './components/FlightPanel'
 import FeedStatus from './components/FeedStatus'
 import type { FeedState } from './flights/feed'
 import { useLayerSettings } from './state/layers'
+import { useSettings } from './state/settings'
 import { RadarController } from './layers/radar'
 import { SelectionStore } from './flights/selection'
 import { F } from '../shared/wire'
@@ -15,6 +16,7 @@ const synthetic = new URLSearchParams(location.search).has('stress')
 export default function App() {
   const [selected, setSelected] = useState<string | null>(null)
   const [layers, setLayers] = useLayerSettings()
+  const [settings, setSettings] = useSettings()
   const [selection] = useState(() => new SelectionStore())
   const [radar] = useState(
     () => new RadarController({ visible: layers.radar, style: layers.radarStyle, opacity: layers.radarOpacity }),
@@ -36,8 +38,15 @@ export default function App() {
 
   const feed = feedRef.current
   const serverNow = now + (feed?.clockOffset ?? 0)
-  const selectedCallsign = (selected && feed?.aircraft.get(selected)?.[F.Callsign]) || null
-  useEffect(() => selection.select(selected, selectedCallsign), [selection, selected, selectedCallsign])
+  const selectedAc = selected ? feed?.aircraft.get(selected) : undefined
+  const selectedCallsign = selectedAc?.[F.Callsign] || null
+  const selectedType = selectedAc?.[F.Type] || null
+  useEffect(
+    () => selection.select(selected, selectedCallsign, selectedType),
+    // Only refetch when the aircraft or its callsign changes, not when the type arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selection, selected, selectedCallsign],
+  )
 
   return (
     <main className="app">
@@ -49,6 +58,7 @@ export default function App() {
           aircraft={feed?.aircraft.get(selected)}
           now={serverNow}
           selection={selection}
+          units={settings.units}
           onClose={() => setSelected(null)}
         />
       )}
@@ -59,7 +69,7 @@ export default function App() {
         now={serverNow}
         synthetic={synthetic}
       />
-      <BottomDock layers={layers} onLayersChange={setLayers} radar={radar} />
+      <BottomDock layers={layers} onLayersChange={setLayers} radar={radar} settings={settings} onSettingsChange={setSettings} />
     </main>
   )
 }

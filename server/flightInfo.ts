@@ -38,8 +38,15 @@ class Cache<T> {
   }
 }
 
+/** Give up on any one source after this long, so it can't hold up the panel. */
+const SOURCE_TIMEOUT_MS = 6000
+
 async function getJson<T>(url: string): Promise<T | null> {
-  const res = await fetch(url, { headers: UA, signal: AbortSignal.timeout(10_000) })
+  const started = Date.now()
+  const res = await fetch(url, { headers: UA, signal: AbortSignal.timeout(SOURCE_TIMEOUT_MS) }).finally(() => {
+    const ms = Date.now() - started
+    if (ms > 2500) console.warn(`[details] slow response: ${new URL(url).host} took ${(ms / 1000).toFixed(1)}s`)
+  })
   if (res.status === 404) return null
   if (!res.ok) throw new Error(`${new URL(url).host} HTTP ${res.status}`)
   return (await res.json()) as T
@@ -133,10 +140,11 @@ function aircraft(hex: string) {
 }
 
 function photo(hex: string, reg: string | null) {
-  return photoCache.get(`${hex}|${reg ?? ''}`, 24 * HOUR, async () => {
+  return photoCache.get(reg ? `reg:${reg}` : `hex:${hex}`, 24 * HOUR, async () => {
     type P = { photos: { thumbnail_large: { src: string }; link: string; photographer: string }[] }
-    let body = await getJson<P>(`https://api.planespotters.net/pub/photos/hex/${encodeURIComponent(hex)}`)
-    if (!body?.photos?.length && reg) body = await getJson<P>(`https://api.planespotters.net/pub/photos/reg/${encodeURIComponent(reg)}`)
+    const body = reg
+      ? await getJson<P>(`https://api.planespotters.net/pub/photos/reg/${encodeURIComponent(reg)}`)
+      : await getJson<P>(`https://api.planespotters.net/pub/photos/hex/${encodeURIComponent(hex)}`)
     const p = body?.photos?.[0]
     return p ? { src: p.thumbnail_large.src, link: p.link, photographer: p.photographer } : null
   })
@@ -156,34 +164,50 @@ const settle = <T,>(p: Promise<T>) => p.catch(() => null)
  * used to sanity-check the route: the callsign database is crowd-sourced and
  * occasionally out of date (airlines reuse flight numbers).
  */
-export async function flightInfo(hex: string, callsign: string | null, reg: string | null, pos: [number, number] | null): Promise<FlightInfo> {
+export async function flightInfo(
+  hex: string,
+  callsign: string | null,
+  reg: string | null,
+  pos: [number, number] | null,
+  /** Type code from the live data, used when the aircraft database has no record */
+  liveType: string | null = null,
+): Promise<FlightInfo> {
   const airlinePrefix = callsign?.match(/^([A-Z]{3})\d/)?.[1] ?? null
-  const [r0, al, ac, tr] = await Promise.all([
+  // Everything at once. The flown path is only used to double-check the
+  // departure airport, so don't wait more than a moment for it; if it arrives
+  // later the panel asks again and gets the corrected answer from the cache.
+  const [r0, al, ac, phHex, tr] = await Promise.all([
     callsign ? settle(route(callsign)) : null,
     airlinePrefix ? settle(airline(airlinePrefix)) : null,
     settle(aircraft(hex)),
-    settle(flightTrace(hex)),
+    settle(photo(hex, null)),
+    Promise.race([settle(flightTrace(hex)), new Promise<null>((r) => setTimeout(() => r(null), 1500))]),
   ])
+  const registration = reg ?? ac?.registration ?? tr?.aircraft?.registration ?? null
+  const typeCode = ac?.icao_type ?? liveType ?? tr?.aircraft?.type ?? null
+  // Photo by registration only if the hex lookup found nothing.
+  const ph = phHex ?? (registration ? await settle(photo(hex, registration)) : null)
+
   // The callsign database is crowd-sourced and can be stale. If we saw where
   // this aircraft actually took off and it's a different airport, trust that.
   let r = r0
   let originCorrected = false
   const start = tr?.points[0]
-  if (r && start && start[3] === -1 && distanceKm(start[1], start[2], r.origin.lat, r.origin.lon) > 25) {
-    const actual = nearestAirport(start[1], start[2])
+  // On the ground, or still low (coverage often starts just after takeoff).
+  const startsLow = start && (start[3] === -1 || start[3] < 4000)
+  if (r && start && startsLow && distanceKm(start[1], start[2], r.origin.lat, r.origin.lon) > 25) {
+    const actual = nearestAirport(start[1], start[2], start[3] === -1 ? 15 : 35)
     if (actual && actual.icao !== r.origin.icao) {
       r = { ...r, origin: actual }
       originCorrected = true
     }
   }
-  const registration = reg ?? ac?.registration ?? null
-  const ph = await settle(photo(hex, registration))
 
   let routeOk = false
   if (r && pos) {
     const total = distanceKm(r.origin.lat, r.origin.lon, r.destination.lat, r.destination.lon)
     const via = distanceKm(r.origin.lat, r.origin.lon, pos[0], pos[1]) + distanceKm(pos[0], pos[1], r.destination.lat, r.destination.lon)
-    routeOk = via <= total * 1.25 + 300
+    routeOk = via <= total * 1.2 + 200
   }
 
   const airlineInfo = r?.airline ?? al
@@ -192,12 +216,12 @@ export async function flightInfo(hex: string, callsign: string | null, reg: stri
     callsign,
     airline: airlineInfo ? { name: airlineInfo.name, icao: airlineInfo.icao, iata: airlineInfo.iata } : null,
     aircraft: {
-      typeCode: ac?.icao_type ?? null,
-      name: aircraftName(ac?.icao_type ?? null, ac?.type, ac?.manufacturer),
+      typeCode,
+      name: aircraftName(typeCode, ac?.type, ac?.manufacturer, tr?.aircraft?.desc),
       registration,
       owner: ac?.registered_owner ?? null,
     },
-    route: r ? { origin: r.origin, destination: r.destination, plausible: routeOk, originCorrected } : null,
+    route: r ? { origin: r.origin, destination: r.destination, plausible: routeOk, originCorrected, verified: Boolean(tr) } : null,
     photo: ph,
   }
 }
@@ -208,6 +232,9 @@ type TracePoint = [dt: number, lat: number, lon: number, alt: number | 'ground' 
 interface RawTrace {
   timestamp: number
   trace: TracePoint[]
+  /** type code, registration and description from the aircraft database */
+  t?: string
+  r?: string
   desc?: string
 }
 
@@ -215,13 +242,29 @@ const fullTraceCache = new Cache<RawTrace | null>(500)
 const recentTraceCache = new Cache<RawTrace | null>(500)
 
 async function getTrace(kind: 'full' | 'recent', hex: string): Promise<RawTrace | null> {
-  const res = await fetch(`https://api.adsb.lol/1/trace/${kind}/${encodeURIComponent(hex)}`, { headers: UA, signal: AbortSignal.timeout(15_000) })
+  const res = await fetch(`https://api.adsb.lol/1/trace/${kind}/${encodeURIComponent(hex)}`, { headers: UA, signal: AbortSignal.timeout(SOURCE_TIMEOUT_MS) })
   if (res.status === 404) return null
   if (!res.ok) throw new Error(`adsb.lol trace HTTP ${res.status}`)
   const buf = Buffer.from(await res.arrayBuffer())
   // Usually served gzip-encoded; fetch may or may not have unpacked it already.
   const text = buf[0] === 0x1f && buf[1] === 0x8b ? gunzipSync(buf).toString('utf8') : buf.toString('utf8')
   return JSON.parse(text) as RawTrace
+}
+
+/**
+ * Does a gap in the data separate two different flights? Receiver coverage
+ * often drops out for a while mid-flight (mountains, deserts, oceans), so a
+ * gap alone isn't enough: it must look like the aircraft landed in between.
+ */
+function isNewFlight(a: [number, number, number, number], b: [number, number, number, number]) {
+  const gapMin = (b[0] - a[0]) / 60_000
+  if (gapMin < 30) return false
+  if (gapMin > 240) return true
+  const low = (alt: number) => alt >= 0 && alt < 8000
+  if (low(a[3]) || low(b[3])) return true
+  // Barely moved during the gap? Then it sat somewhere.
+  const kt = distanceKm(a[1], a[2], b[1], b[2]) / 1.852 / (gapMin / 60)
+  return kt < 150
 }
 
 /**
@@ -244,21 +287,23 @@ export async function flightTrace(hex: string): Promise<FlightTrace> {
   }
   points.sort((a, b) => a[0] - b[0])
 
-  // De-duplicate (full and recent overlap) and keep only the current leg.
+  // De-duplicate (full and recent overlap) and keep only the current flight.
   const out: [number, number, number, number][] = []
   let takeoff: number | null = null
   for (const p of points) {
     const last = out[out.length - 1]
     if (last && p[0] - last[0] < 1000) continue
-    // A long gap means a new flight even without a ground report.
-    if (last && p[0] - last[0] > 45 * 60_000) out.length = 0
+    if (last && isNewFlight(last, p)) {
+      out.length = 0
+      takeoff = null
+    }
     if (p[3] === -1) {
       out.length = 0 // on the ground: the flight starts after this
       takeoff = null
       out.push(p)
       continue
     }
-    if (takeoff == null && (out.length === 0 || out[out.length - 1][3] === -1)) takeoff = out.length ? p[0] : null
+    if (takeoff == null && out.length && out[out.length - 1][3] === -1) takeoff = p[0]
     out.push(p)
   }
   // Drop the taxiing points except the last one (the takeoff spot).
@@ -267,5 +312,14 @@ export async function flightTrace(hex: string): Promise<FlightTrace> {
   // Keep the line light: at most ~800 points.
   const step = Math.ceil(out.length / 800)
   const thinned = step > 1 ? out.filter((_, i) => i % step === 0 || i === out.length - 1) : out
-  return { hex, takeoff, points: thinned }
+  // Without the full history we only have the last few minutes; say so, so
+  // the client retries soon instead of showing a half-drawn path for 30 s.
+  const meta = full ?? recent
+  return {
+    hex,
+    takeoff,
+    points: thinned,
+    partial: !full,
+    aircraft: meta ? { type: meta.t ?? null, registration: meta.r ?? null, desc: meta.desc ?? null } : null,
+  }
 }

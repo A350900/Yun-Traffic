@@ -1,11 +1,13 @@
 import type { ExpressionSpecification, GeoJSONSource, Map as MLMap } from 'maplibre-gl'
 import type { Feature, FeatureCollection } from 'geojson'
 import type { FlightInfo, FlightTrace } from '../../shared/wire'
-import { greatCircle } from './geo'
+import { distanceKm, greatCircle } from './geo'
 
 /**
  * Lines for the selected flight:
  *   - the path already flown, coloured by altitude
+ *   - a dashed line from the departure airport to the first known position,
+ *     when tracking began after takeoff
  *   - a dashed great-circle line from the aircraft to its destination
  *   - the departure and arrival airports, labelled
  */
@@ -105,7 +107,7 @@ const bucket = (alt: number) => (alt < 0 ? 0 : Math.round(alt / 1000) * 1000)
  * (extrapolated) position and altitude, so the path always reaches the icon.
  */
 export function updatePath(map: MLMap, trace: FlightTrace | null, info: FlightInfo | null, live: { lon: number; lat: number; alt: number } | null) {
-  // --- flown path
+  // --- flown path. Points: [lon, lat, alt]
   const pts: [number, number, number][] = (trace?.points ?? []).map((p) => [p[2], p[1], p[3]])
   if (live) pts.push([live.lon, live.lat, live.alt])
   // Unwrap longitudes so a flight crossing the antimeridian is drawn continuously.
@@ -116,18 +118,21 @@ export function updatePath(map: MLMap, trace: FlightTrace | null, info: FlightIn
   const runs: Feature[] = []
   let run: [number, number][] = []
   let runAlt = -1
+  const endRun = () => {
+    if (run.length > 1) runs.push({ type: 'Feature', properties: { alt: runAlt }, geometry: { type: 'LineString', coordinates: run } })
+    run = []
+  }
   for (let i = 0; i < pts.length; i++) {
     const [lon, lat, alt] = pts[i]
     const b = bucket(alt)
     if (run.length && b !== runAlt) {
       run.push([lon, lat]) // overlap one point so runs join seamlessly
-      runs.push({ type: 'Feature', properties: { alt: runAlt }, geometry: { type: 'LineString', coordinates: run } })
-      run = []
+      endRun()
     }
     if (!run.length) runAlt = b
     run.push([lon, lat])
   }
-  if (run.length > 1) runs.push({ type: 'Feature', properties: { alt: runAlt }, geometry: { type: 'LineString', coordinates: run } })
+  endRun()
   set(map, FLOWN, { type: 'FeatureCollection', features: runs })
 
   // --- remaining (dashed) and airports
@@ -145,6 +150,15 @@ export function updatePath(map: MLMap, trace: FlightTrace | null, info: FlightIn
     if (pts.length) {
       while (startLon - pts[0][0] > 180) startLon -= 360
       while (startLon - pts[0][0] < -180) startLon += 360
+    }
+    // Tracking began after takeoff: the first part of the flight is unknown.
+    const first = trace?.points[0]
+    if (first && first[3] !== -1 && pts.length && distanceKm(route.origin.lat, route.origin.lon, first[1], first[2]) > 10) {
+      remaining.push({
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'LineString', coordinates: greatCircle(route.origin.lat, startLon, first[1], pts[0][0], startLon) },
+      })
     }
     airports.push(
       { type: 'Feature', properties: { code: route.origin.iata ?? route.origin.icao }, geometry: { type: 'Point', coordinates: [startLon, route.origin.lat] } },
