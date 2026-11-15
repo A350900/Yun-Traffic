@@ -95,10 +95,11 @@ export function addAircraftLayers(map: MLMap) {
     type: 'geojson',
     data: { type: 'FeatureCollection', features: [] },
     // Aircraft are points only; skip work GeoJSON sources do for lines/polygons.
-    // Tiles above z8 are overzoomed (still ~20 m precision), which keeps re-tiling cheap.
+    // maxzoom 12 keeps positions precise to ~1 m, so taxiing aircraft sit
+    // exactly on taxiways at airport zoom. Deep tiles are only built on demand.
     tolerance: 0,
     buffer: 32,
-    maxzoom: 8,
+    maxzoom: 12,
   })
 
   map.addLayer({

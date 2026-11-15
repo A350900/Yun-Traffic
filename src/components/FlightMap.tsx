@@ -21,6 +21,8 @@ const MIN_REDRAW_MS = 1000
 const MAX_REDRAW_MS = 6000
 /** Below this zoom every aircraft is sent; above it only those near the screen. */
 const CULL_MIN_ZOOM = 4
+/** Above this many aircraft an update is costly enough to hold off mid-gesture. */
+const HOLD_DURING_GESTURE_ABOVE = 3000
 
 /**
  * How long until a fast airliner (~500 kt) moves half a pixel at this zoom.
@@ -118,12 +120,14 @@ function FlightMap({ selected, onSelect, onFeed, dayNight, radar }: Props) {
     let lastWindow: ViewWindow | null = null
     let lastZoomBand = -1
     let needsDraw = true
+    let lastSent = 0
 
     const draw = () => {
       const s = feed.state
       lastWindow = viewWindow(map)
       lastZoomBand = Math.floor(map.getZoom())
       const { ms, sent } = updateAircraftSource(map, s.aircraft, Date.now() + s.clockOffset, lastWindow, selectedRef.current)
+      lastSent = sent
       lastDraw = performance.now()
       needsDraw = false
       // Exposed for debugging / perf checks in the console.
@@ -134,8 +138,14 @@ function FlightMap({ selected, onSelect, onFeed, dayNight, radar }: Props) {
     const tick = () => {
       if (document.hidden || !map.getSource('aircraft')) return
       const since = performance.now() - lastDraw
-      // Don't interrupt a drag/zoom gesture unless positions are getting stale.
-      if (map.isMoving() && since < 2500) return
+      if (map.isMoving()) {
+        // Panned past the area we sent aircraft for: fill it in right away.
+        if (lastWindow && !covers(lastWindow, map)) return draw()
+        // Big updates (thousands of aircraft, zoomed out) wait until the gesture
+        // ends so dragging stays smooth; there, motion is sub-pixel anyway.
+        // Zoomed in, updates are small, so aircraft keep moving while you drag.
+        if (lastSent > HOLD_DURING_GESTURE_ABOVE && since < 2500) return
+      }
       if (needsDraw || since >= redrawInterval(map)) draw()
     }
 
