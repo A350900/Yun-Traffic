@@ -10,6 +10,10 @@ import { startFeed, startStressFeed, type FeedState, type FocusHint } from '../f
 import { addAircraftLayers, LAYER, setSelected, updateAircraftSource, type ViewWindow } from '../flights/layer'
 import { addDayNightLayer, setDayNightVisible, updateDayNight } from '../layers/dayNight'
 import type { RadarController } from '../layers/radar'
+import type { SelectionStore } from '../flights/selection'
+import { addPathLayers, clearPath, updatePath } from '../flights/pathLayer'
+import { extrapolate } from '../flights/position'
+import { F } from '../../shared/wire'
 
 const theme = THEMES[ACTIVE_THEME]
 setWorkerUrl(workerUrl)
@@ -61,6 +65,7 @@ interface Props {
   /** Show the day/night (solar terminator) overlay */
   dayNight: boolean
   radar: RadarController
+  selection: SelectionStore
 }
 
 /** Rough radius of the visible area in nautical miles. */
@@ -72,7 +77,7 @@ function focusFor(map: MLMap): FocusHint | null {
   return { lat: c.lat, lon: c.lng, radiusNm: Math.max(radiusNm, 25) }
 }
 
-function FlightMap({ selected, onSelect, onFeed, dayNight, radar }: Props) {
+function FlightMap({ selected, onSelect, onFeed, dayNight, radar, selection }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
   const onSelectRef = useRef(onSelect)
@@ -130,9 +135,26 @@ function FlightMap({ selected, onSelect, onFeed, dayNight, radar }: Props) {
       lastSent = sent
       lastDraw = performance.now()
       needsDraw = false
+      drawPath()
       // Exposed for debugging / perf checks in the console.
       ;(window as unknown as Record<string, unknown>).__yun = { count: s.aircraft.size, sent, buildMs: ms, map }
     }
+
+    // The selected flight's path, ending at the aircraft's current position.
+    const drawPath = () => {
+      if (!map.getSource('path-flown')) return
+      const sel = selection.getState()
+      if (!sel.hex) return clearPath(map)
+      const ac = feed.state.aircraft.get(sel.hex)
+      const live = ac
+        ? (() => {
+            const [lon, lat] = extrapolate(ac, Date.now() + feed.state.clockOffset)
+            return { lon, lat, alt: ac[F.Alt] ?? 0 }
+          })()
+        : null
+      updatePath(map, sel.trace?.hex === sel.hex ? sel.trace : null, sel.info?.hex === sel.hex ? sel.info : null, live)
+    }
+    const unsubscribeSelection = selection.subscribe(drawPath)
 
     // Redraw only when it would visibly change something.
     const tick = () => {
@@ -175,6 +197,7 @@ function FlightMap({ selected, onSelect, onFeed, dayNight, radar }: Props) {
       dayNightTimer = window.setInterval(() => updateDayNight(map), 60_000)
       radar.attach(map) // above day/night, below labels and aircraft
       addAircraftLayers(map)
+      addPathLayers(map, LAYER) // under the aircraft icons
       draw()
       renderTimer = window.setInterval(tick, TICK_MS)
     })
@@ -196,6 +219,7 @@ function FlightMap({ selected, onSelect, onFeed, dayNight, radar }: Props) {
       clearInterval(renderTimer)
       clearInterval(dayNightTimer)
       document.removeEventListener('visibilitychange', onVisible)
+      unsubscribeSelection()
       radar.detach()
       feed.stop()
       map.remove()

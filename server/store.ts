@@ -40,6 +40,10 @@ export class AircraftStore {
     return this.entries.size
   }
 
+  get(hex: string): AircraftTuple | undefined {
+    return this.entries.get(hex)?.data
+  }
+
   forEach(fn: (ac: AircraftTuple) => void) {
     for (const e of this.entries.values()) fn(e.data)
   }

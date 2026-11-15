@@ -7,6 +7,7 @@ import { AircraftStore } from './store.ts'
 import { Scheduler } from './scheduler.ts'
 import { OpenSkyPoller } from './opensky.ts'
 import { ADSB_FI, RegionSweep } from './regionSweep.ts'
+import { flightInfo, flightTrace } from './flightInfo.ts'
 import type { AircraftResponse } from '../shared/wire.ts'
 
 // Honour HTTPS_PROXY when one is set (e.g. in sandboxed/corporate networks).
@@ -113,6 +114,20 @@ createServer((req, res) => {
       opensky: opensky.status,
       adsbFi: adsbFi.status,
     })
+  }
+  const detail = url.pathname.match(/^\/api\/(flight|trace)\/([0-9a-f~]{6,7})$/i)
+  if (req.method === 'GET' && detail) {
+    const hex = detail[2].toLowerCase()
+    const ac = store.get(hex)
+    const job =
+      detail[1] === 'flight'
+        ? flightInfo(hex, (url.searchParams.get('cs') || ac?.[6] || '').trim().toUpperCase() || null, ac?.[8] ?? null, ac ? [ac[1], ac[2]] : null)
+        : flightTrace(hex)
+    job.then(
+      (body) => send(req, res, 200, body),
+      (err) => send(req, res, 502, { error: (err as Error).message }),
+    )
+    return
   }
   if (url.pathname.startsWith('/api/')) return send(req, res, 404, { error: 'not found' })
   serveStatic(res, url.pathname)

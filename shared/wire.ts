@@ -71,3 +71,36 @@ export interface FeedStats {
     error: string | null
   }
 }
+
+// ---------------------------------------------------------------- flight details
+
+export interface AirportInfo {
+  icao: string
+  iata: string | null
+  name: string
+  city: string
+  country: string
+  lat: number
+  lon: number
+  /** IANA time zone, e.g. America/New_York */
+  tz: string | null
+}
+
+export interface FlightInfo {
+  hex: string
+  callsign: string | null
+  airline: { name: string; icao: string; iata: string | null } | null
+  aircraft: { typeCode: string | null; name: string | null; registration: string | null; owner: string | null }
+  /** `plausible` is false when the aircraft's position doesn't fit the route (stale database entry) */
+  route: { origin: AirportInfo; destination: AirportInfo; plausible: boolean; originCorrected: boolean } | null
+  /** planespotters.net photo; must be shown with the photographer credit and link */
+  photo: { src: string; link: string; photographer: string } | null
+}
+
+export interface FlightTrace {
+  hex: string
+  /** Epoch ms of takeoff, if seen */
+  takeoff: number | null
+  /** [epoch ms, lat, lon, altitude ft (-1 = on ground)] */
+  points: [number, number, number, number][]
+}

@@ -7,12 +7,15 @@ import FeedStatus from './components/FeedStatus'
 import type { FeedState } from './flights/feed'
 import { useLayerSettings } from './state/layers'
 import { RadarController } from './layers/radar'
+import { SelectionStore } from './flights/selection'
+import { F } from '../shared/wire'
 
 const synthetic = new URLSearchParams(location.search).has('stress')
 
 export default function App() {
   const [selected, setSelected] = useState<string | null>(null)
   const [layers, setLayers] = useLayerSettings()
+  const [selection] = useState(() => new SelectionStore())
   const [radar] = useState(
     () => new RadarController({ visible: layers.radar, style: layers.radarStyle, opacity: layers.radarOpacity }),
   )
@@ -33,16 +36,19 @@ export default function App() {
 
   const feed = feedRef.current
   const serverNow = now + (feed?.clockOffset ?? 0)
+  const selectedCallsign = (selected && feed?.aircraft.get(selected)?.[F.Callsign]) || null
+  useEffect(() => selection.select(selected, selectedCallsign), [selection, selected, selectedCallsign])
 
   return (
     <main className="app">
-      <FlightMap selected={selected} onSelect={setSelected} onFeed={onFeed} dayNight={layers.dayNight} radar={radar} />
+      <FlightMap selected={selected} onSelect={setSelected} onFeed={onFeed} dayNight={layers.dayNight} radar={radar} selection={selection} />
       <TopBar />
       {selected && (
         <FlightPanel
           hex={selected}
           aircraft={feed?.aircraft.get(selected)}
           now={serverNow}
+          selection={selection}
           onClose={() => setSelected(null)}
         />
       )}

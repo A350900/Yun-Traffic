@@ -62,6 +62,16 @@ adsb.lol API ──► server/ (paced poller + in-memory store) ──► /api/a
   detection off. Tested with 20,000 synthetic aircraft: about 3–4 ms of main-thread work per
   1-second update.
 
+### Flight details (click an aircraft)
+
+`/api/flight/:hex` combines, server-side and cached: route + airline from [adsbdb](https://www.adsbdb.com)
+(departure airport corrected from the actual takeoff point when the crowd-sourced route is stale),
+model name (`server/aircraftTypes.ts`), time zones from `data/airports.json`, and a photo from
+[Planespotters.net](https://www.planespotters.net) (shown with the photographer credit and link, as their
+terms require). `/api/trace/:hex` returns the path flown since takeoff from adsb.lol traces; the map
+draws it coloured by altitude, plus a dashed great-circle line to the destination.
+Scheduled times aren't available from free sources.
+
 ### Weather radar
 
 RainViewer's free radar tiles (past 2 h, 10-minute frames, zoom ≤ 7, attribution required).
