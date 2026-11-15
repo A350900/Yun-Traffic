@@ -7,7 +7,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { THEMES, ACTIVE_THEME } from '../config/theme'
 import { LocateIcon, MinusIcon, PlusIcon } from './Icons'
 import { startFeed, startStressFeed, type FeedState, type FocusHint } from '../flights/feed'
-import { addAircraftLayers, LAYER, setSelected, updateAircraftSource, type ViewWindow } from '../flights/layer'
+import { addAircraftLayers, BANDS, ICON_LAYERS, updateAircraftBand, updateSelected, type ViewWindow } from '../flights/layer'
 import { addDayNightLayer, setDayNightVisible, updateDayNight } from '../layers/dayNight'
 import type { RadarController } from '../layers/radar'
 import type { SelectionStore } from '../flights/selection'
@@ -22,7 +22,7 @@ setWorkerUrl(workerUrl)
 const TICK_MS = 250
 /** Fastest redraw (zoomed in) and slowest (whole world). */
 const MIN_REDRAW_MS = 1000
-const MAX_REDRAW_MS = 6000
+const MAX_REDRAW_MS = 12_000
 /** Below this zoom every aircraft is sent; above it only those near the screen. */
 const CULL_MIN_ZOOM = 4
 /** Above this many aircraft an update is costly enough to hold off mid-gesture. */
@@ -59,7 +59,6 @@ function covers(win: ViewWindow, map: MLMap) {
 const FOCUS_MIN_ZOOM = 5
 
 interface Props {
-  selected: string | null
   onSelect: (hex: string | null) => void
   onFeed: (state: FeedState) => void
   /** Show the day/night (solar terminator) overlay */
@@ -77,14 +76,12 @@ function focusFor(map: MLMap): FocusHint | null {
   return { lat: c.lat, lon: c.lng, radiusNm: Math.max(radiusNm, 25) }
 }
 
-function FlightMap({ selected, onSelect, onFeed, dayNight, radar, selection }: Props) {
+function FlightMap({ onSelect, onFeed, dayNight, radar, selection }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
   const onSelectRef = useRef(onSelect)
   const onFeedRef = useRef(onFeed)
   const dayNightRef = useRef(dayNight)
-  const selectedRef = useRef(selected)
-  selectedRef.current = selected
   onSelectRef.current = onSelect
   onFeedRef.current = onFeed
   dayNightRef.current = dayNight
@@ -108,7 +105,7 @@ function FlightMap({ selected, onSelect, onFeed, dayNight, radar, selection }: P
       attributionControl: {
         compact: true,
         customAttribution:
-          'Aircraft data © <a href="https://adsb.lol" target="_blank">adsb.lol</a> (ODbL), <a href="https://opensky-network.org" target="_blank">The OpenSky Network</a>, <a href="https://adsb.fi" target="_blank">adsb.fi</a>',
+          'Aircraft data © <a href="https://adsb.lol" target="_blank">adsb.lol</a> (ODbL), <a href="https://opensky-network.org" target="_blank">The OpenSky Network</a>, <a href="https://airplanes.live" target="_blank">airplanes.live</a>',
       },
     })
     mapRef.current = map
@@ -121,72 +118,97 @@ function FlightMap({ selected, onSelect, onFeed, dayNight, radar, selection }: P
 
     let renderTimer = 0
     let dayNightTimer = 0
-    let lastDraw = 0
-    let lastWindow: ViewWindow | null = null
+    // Per group (see BANDS in layer.ts): when it was last sent, for which area, how many.
+    const lastDraw = new Array<number>(BANDS).fill(0)
+    const windows = new Array<ViewWindow | null>(BANDS).fill(null)
+    const sentPerBand = new Array<number>(BANDS).fill(0)
     let lastZoomBand = -1
-    let needsDraw = true
-    let lastSent = 0
+    let refreshAll = true
+    let lastPathDraw = 0
+    // Zoomed out (thousands of aircraft) the work is split over BANDS groups;
+    // zoomed in, updates are small and one group is cheaper.
+    let groups = BANDS
+    let lastAnyDraw = 0
+    const now = () => Date.now() + feed.state.clockOffset
+    const totalSent = () => sentPerBand.reduce((a, b) => a + b, 0)
 
-    const draw = () => {
-      const s = feed.state
-      lastWindow = viewWindow(map)
+    const drawBand = (b: number) => {
+      const win = viewWindow(map)
+      windows[b] = win
       lastZoomBand = Math.floor(map.getZoom())
-      const { ms, sent } = updateAircraftSource(map, s.aircraft, Date.now() + s.clockOffset, lastWindow, selectedRef.current)
-      lastSent = sent
-      lastDraw = performance.now()
-      needsDraw = false
-      drawPath()
-      // Exposed for debugging / perf checks in the console.
-      ;(window as unknown as Record<string, unknown>).__yun = { count: s.aircraft.size, sent, buildMs: ms, map }
+      sentPerBand[b] = updateAircraftBand(map, b, feed.state.aircraft, now(), win, groups)
+      lastDraw[b] = lastAnyDraw = performance.now()
+      ;(window as unknown as Record<string, unknown>).__yun = { count: feed.state.aircraft.size, sent: totalSent(), map }
     }
 
-    // The selected flight's path, ending at the aircraft's current position.
-    const drawPath = () => {
-      if (!map.getSource('path-flown')) return
+    // Refresh every group, one per animation frame so no single frame does it all.
+    let refreshing = false
+    const drawAllProgressively = () => {
+      if (refreshing) return
+      refreshing = true
+      refreshAll = false
+      groups = viewWindow(map) ? 1 : BANDS
+      let b = 0
+      const step = () => {
+        drawBand(b++)
+        if (b < BANDS) requestAnimationFrame(step)
+        else refreshing = false
+      }
+      requestAnimationFrame(step)
+    }
+
+    // The selected flight: highlight + path, ending at its current position.
+    const drawSelection = () => {
       const sel = selection.getState()
+      const ac = sel.hex ? feed.state.aircraft.get(sel.hex) : undefined
+      updateSelected(map, ac, now())
+      if (!map.getSource('path-flown')) return
+      lastPathDraw = performance.now()
       if (!sel.hex) return clearPath(map)
-      const ac = feed.state.aircraft.get(sel.hex)
       const live = ac
         ? (() => {
-            const [lon, lat] = extrapolate(ac, Date.now() + feed.state.clockOffset)
+            const [lon, lat] = extrapolate(ac, now())
             return { lon, lat, alt: ac[F.Alt] ?? 0 }
           })()
         : null
       updatePath(map, sel.trace?.hex === sel.hex ? sel.trace : null, sel.info?.hex === sel.hex ? sel.info : null, live)
     }
-    const unsubscribeSelection = selection.subscribe(drawPath)
+    const unsubscribeSelection = selection.subscribe(drawSelection)
 
-    // Redraw only when it would visibly change something.
+    const coveredByAll = () => windows.every((w) => !w || covers(w, map))
+
+    // Every 250 ms: update at most one group, and only when it would visibly
+    // change something. Groups come due a fraction of the interval apart.
     const tick = () => {
-      if (document.hidden || !map.getSource('aircraft')) return
-      const since = performance.now() - lastDraw
+      if (document.hidden || !map.getSource('aircraft-0')) return
+      if (selection.getState().hex && performance.now() - lastPathDraw >= 1000) drawSelection()
+      if (refreshAll) return drawAllProgressively()
       if (map.isMoving()) {
         // Panned past the area we sent aircraft for: fill it in right away.
-        if (lastWindow && !covers(lastWindow, map)) return draw()
+        if (!coveredByAll()) return drawAllProgressively()
         // Big updates (thousands of aircraft, zoomed out) wait until the gesture
         // ends so dragging stays smooth; at those zooms aircraft move less than
         // a pixel in 10 s, so nothing visible is lost.
-        // Zoomed in, updates are small, so aircraft keep moving while you drag.
-        if (lastSent > HOLD_DURING_GESTURE_ABOVE && since < 10_000) return
+        if (totalSent() > HOLD_DURING_GESTURE_ABOVE && performance.now() - Math.min(...lastDraw.slice(0, groups)) < 10_000) return
       }
-      if (needsDraw || since >= redrawInterval(map)) draw()
+      const interval = redrawInterval(map)
+      const t = performance.now()
+      // Keep group updates evenly spaced through the interval, never bunched.
+      if (t - lastAnyDraw < interval / groups) return
+      let oldest = 0
+      for (let b = 1; b < groups; b++) if (lastDraw[b] < lastDraw[oldest]) oldest = b
+      if (t - lastDraw[oldest] >= interval) drawBand(oldest)
     }
 
     // After the view changes, redraw at once if we panned beyond the area we
     // sent aircraft for, or zoomed into a level where culling changes.
     map.on('moveend', () => {
       const zoomBand = Math.floor(map.getZoom())
-      const win = viewWindow(map)
-      if ((win === null) !== (lastWindow === null) || (lastWindow && !covers(lastWindow, map)) || zoomBand !== lastZoomBand) {
-        needsDraw = true
-        tick()
-      }
+      const culling = viewWindow(map) !== null
+      if (culling !== (windows[0] !== null) || !coveredByAll() || zoomBand !== lastZoomBand) drawAllProgressively()
     })
     const onVisible = () => {
-      if (!document.hidden) {
-        needsDraw = true
-        tick()
-      }
+      if (!document.hidden) drawAllProgressively()
     }
     document.addEventListener('visibilitychange', onVisible)
     // --------------------------------------------------------------------
@@ -197,21 +219,25 @@ function FlightMap({ selected, onSelect, onFeed, dayNight, radar, selection }: P
       dayNightTimer = window.setInterval(() => updateDayNight(map), 60_000)
       radar.attach(map) // above day/night, below labels and aircraft
       addAircraftLayers(map)
-      addPathLayers(map, LAYER) // under the aircraft icons
-      draw()
+      addPathLayers(map, ICON_LAYERS[0]) // under the aircraft icons
+      drawAllProgressively()
       renderTimer = window.setInterval(tick, TICK_MS)
     })
 
-    map.on('click', LAYER, (e) => {
-      const hex = e.features?.[0]?.properties?.hex as string | undefined
-      if (hex) onSelectRef.current(hex)
-    })
     map.on('click', (e) => {
+      // A few pixels of slack makes small icons easier to hit.
+      const box: [[number, number], [number, number]] = [
+        [e.point.x - 4, e.point.y - 4],
+        [e.point.x + 4, e.point.y + 4],
+      ]
+      const hit = map.queryRenderedFeatures(box, { layers: ICON_LAYERS })[0]
       // Clicking empty map clears the selection.
-      if (!map.queryRenderedFeatures(e.point, { layers: [LAYER] }).length) onSelectRef.current(null)
+      onSelectRef.current((hit?.properties?.hex as string | undefined) ?? null)
     })
-    map.on('mouseenter', LAYER, () => (map.getCanvas().style.cursor = 'pointer'))
-    map.on('mouseleave', LAYER, () => (map.getCanvas().style.cursor = ''))
+    for (const id of ICON_LAYERS) {
+      map.on('mouseenter', id, () => (map.getCanvas().style.cursor = 'pointer'))
+      map.on('mouseleave', id, () => (map.getCanvas().style.cursor = ''))
+    }
     map.touchZoomRotate.disableRotation()
     map.keyboard.disableRotation()
 
@@ -227,10 +253,6 @@ function FlightMap({ selected, onSelect, onFeed, dayNight, radar, selection }: P
     }
   }, [])
 
-  useEffect(() => {
-    const map = mapRef.current
-    if (map) setSelected(map, selected)
-  }, [selected])
 
   useEffect(() => {
     const map = mapRef.current

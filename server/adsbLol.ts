@@ -31,7 +31,7 @@ interface RawAircraft {
 export interface RawResponse {
   /** adsb.lol / readsb name */
   ac?: RawAircraft[]
-  /** adsb.fi name for the same list */
+  /** name some providers use for the same list */
   aircraft?: RawAircraft[]
   now: number
 }

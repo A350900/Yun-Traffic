@@ -14,14 +14,16 @@ function sourceSummary(stats: FeedStats, now: number) {
   if (os?.enabled) {
     const next = os.nextFetch ? Math.max(0, Math.round((os.nextFetch - now) / 1000)) : null
     lines.push(
-      `OpenSky (worldwide${os.authenticated ? '' : ', anonymous'}): ` +
+      `OpenSky — main source, worldwide${os.authenticated ? '' : ' (anonymous)'}: ` +
         (os.error ? os.error : next != null ? `next snapshot in ${next}s` : 'connecting…'),
     )
   }
-  lines.push('adsb.fi (region by region, busiest first): live')
+  const al = stats.airplanesLive
+  lines.push(`airplanes.live — fills gaps, region by region: ${al?.error ? al.error : al?.lastFetch ? 'live' : 'connecting…'}`)
   lines.push(
-    `adsb.lol (types, registrations, zoomed-in areas): ${stats.rateLimited ? 'pacing requests (rate limit)' : 'live'}`,
+    `adsb.lol — fills gaps, types and zoomed-in areas: ${stats.rateLimited ? 'pacing requests (rate limit)' : 'live'}`,
   )
+  lines.push('Faded aircraft: estimated position (no report for 5+ min, e.g. over oceans).')
   lines.push('Positions between updates are estimated from speed and heading.')
   return lines.join('\n')
 }

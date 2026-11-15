@@ -62,6 +62,8 @@ export interface FeedStats {
   /** How long a full sweep of all aircraft types takes at the current pacing, seconds */
   sweepSeconds: number
   rateLimited: boolean
+  /** Secondary region-sweep source */
+  airplanesLive?: { lastFetch: number | null; error: string | null }
   opensky?: {
     enabled: boolean
     /** Using the owner's OpenSky account (vs anonymous, much lower limits) */

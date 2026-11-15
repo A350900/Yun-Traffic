@@ -1,12 +1,12 @@
 import type { AircraftTuple } from '../shared/wire.ts'
 import { normalize, RateLimitedError, type RawResponse } from './adsbLol.ts'
-import type { AircraftStore } from './store.ts'
+import type { AircraftStore, SourceName } from './store.ts'
 
 /**
  * Sweeps the world with "everything within 250 nm of this point" queries.
  *
- * Community networks like adsb.fi see aircraft OpenSky doesn't, but only
- * answer area queries (max 250 nm) at about 1 request/second. So we tile the
+ * Community networks like airplanes.live see aircraft OpenSky doesn't, but
+ * only answer area queries (max 250 nm) at about 1 request/second. So we tile the
  * world into ~900 overlapping circles and keep visiting them, busiest first:
  *
  *   score = sqrt(expected aircraft + 1) × seconds since last visit
@@ -70,6 +70,7 @@ export class RegionSweep {
   private interval: number
   private pausedUntil = 0
   status = { lastFetch: null as number | null, requests: 0, cells: 0, rateLimited: false, error: null as string | null }
+  private refusals = 0
 
   constructor(store: AircraftStore, source: RegionSource) {
     this.store = store
@@ -137,13 +138,21 @@ export class RegionSweep {
         await res.body?.cancel()
         throw new RateLimitedError(Number(res.headers.get('retry-after')) || 30)
       }
+      if (res.status === 401 || res.status === 403) {
+        // Access refused (not a rate limit). Don't keep hammering: back off.
+        const text = (await res.text().catch(() => '')).slice(0, 200)
+        this.refusals++
+        if (this.refusals >= 3) this.pausedUntil = Date.now() + 10 * 60_000
+        throw new Error(`access refused (HTTP ${res.status})${text ? `: ${text}` : ''}${this.refusals >= 3 ? ' — retrying in 10 min' : ''}`)
+      }
       if (!res.ok) {
         await res.body?.cancel()
         throw new Error(`HTTP ${res.status}`)
       }
       const aircraft = normalize((await res.json()) as RawResponse)
-      for (const ac of aircraft) this.store.upsert(ac, 'adsb.fi')
+      for (const ac of aircraft) this.store.upsert(ac, this.source.name as SourceName)
       cell.lastCount = aircraft.length
+      this.refusals = 0
       this.status.lastFetch = Date.now()
       this.status.requests++
       this.status.rateLimited = false
@@ -164,9 +173,13 @@ export class RegionSweep {
   }
 }
 
-/** adsb.fi open data: 1 request/second, personal non-commercial use, attribution required. */
-export const ADSB_FI: RegionSource = {
-  name: 'adsb.fi',
-  url: (lat, lon, r) => `https://opendata.adsb.fi/api/v2/lat/${lat.toFixed(2)}/lon/${lon.toFixed(2)}/dist/${r}`,
-  intervalMs: Number(process.env.ADSBFI_INTERVAL_MS ?? 1100),
+/**
+ * airplanes.live REST API (https://airplanes.live/api-guide): 1 request/second,
+ * non-commercial use. Note: globe.airplanes.live is their website's map, not
+ * an API; this uses their documented API instead.
+ */
+export const AIRPLANES_LIVE: RegionSource = {
+  name: 'airplanes.live',
+  url: (lat, lon, r) => `https://api.airplanes.live/v2/point/${lat.toFixed(2)}/${lon.toFixed(2)}/${r}`,
+  intervalMs: Number(process.env.AIRPLANESLIVE_INTERVAL_MS ?? 1100),
 }

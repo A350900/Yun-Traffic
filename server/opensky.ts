@@ -108,6 +108,8 @@ export class OpenSkyPoller {
   private schedule(seconds: number) {
     const s = Math.min(MAX_INTERVAL_S, Math.max(MIN_INTERVAL_S, seconds))
     this.status.nextFetch = Date.now() + s * 1000
+    // OpenSky is the main source: keep its aircraft until its next snapshot.
+    this.store.setReportInterval(s * 1000)
     this.timer = setTimeout(() => void this.loop(), s * 1000)
   }
 

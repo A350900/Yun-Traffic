@@ -1,7 +1,15 @@
 import type { AircraftTuple } from '../shared/wire.ts'
 
-/** How long an aircraft may go without a fresh position before it's dropped. */
-const MAX_AGE_MS = 12 * 60_000
+/**
+ * An aircraft is kept while any source still reports it, and dropped once
+ * it's gone unreported this long. (Over oceans the *position* can be many
+ * minutes old while the aircraft is still being tracked, so position age
+ * alone isn't a good reason to drop it.) Raised automatically when the main
+ * source's snapshots are further apart than this.
+ */
+const BASE_SILENCE_MS = 12 * 60_000
+/** Drop regardless if the last real position is older than this. */
+const MAX_POSITION_AGE_MS = 45 * 60_000
 /** How long removal records are kept so clients can catch up via deltas. */
 const TOMBSTONE_MS = 30 * 60_000
 
@@ -16,14 +24,16 @@ interface Meta {
 }
 
 /** Where a position came from (for coverage stats). */
-export type SourceName = 'opensky' | 'adsb.fi' | 'adsb.lol'
-const SOURCES: SourceName[] = ['opensky', 'adsb.fi', 'adsb.lol']
+export type SourceName = 'opensky' | 'airplanes.live' | 'adsb.lol'
+const SOURCES: SourceName[] = ['opensky', 'airplanes.live', 'adsb.lol']
 /** Window for "which sources have seen this aircraft recently". */
 const SEEN_WINDOW_MS = 15 * 60_000
 
 interface Entry {
   data: AircraftTuple
   version: number
+  /** Last time any source reported this aircraft (even with an older position) */
+  lastReported: number
 }
 
 /**
@@ -37,8 +47,14 @@ export class AircraftStore {
   private seen = new Map<SourceName, Map<string, number>>(SOURCES.map((src) => [src, new Map()]))
   private tombstones = new Map<string, { version: number; at: number }>()
   private version = 0
+  private silenceMs = BASE_SILENCE_MS
   /** Oldest version a delta can still be computed from */
   private floor = 0
+
+  /** Let a source that reports every `intervalMs` keep its aircraft between reports. */
+  setReportInterval(intervalMs: number) {
+    this.silenceMs = Math.max(BASE_SILENCE_MS, intervalMs * 1.5 + 60_000)
+  }
 
   get currentVersion() {
     return this.version
@@ -81,6 +97,8 @@ export class AircraftStore {
     }
 
     const existing = this.entries.get(hex)
+    const now = Date.now()
+    if (existing) existing.lastReported = now
     // Never replace a newer position with an older one (the sources and
     // queries overlap, and return the same aircraft with different ages).
     if (existing && existing.data[9] >= ac[9]) {
@@ -107,13 +125,13 @@ export class AircraftStore {
     merged[12] ??= existing?.data[12] ?? null // vertical rate
 
     this.version++
-    this.entries.set(hex, { data: merged, version: this.version })
+    this.entries.set(hex, { data: merged, version: this.version, lastReported: now })
     this.tombstones.delete(hex)
   }
 
   prune(now = Date.now()) {
     for (const [hex, e] of this.entries) {
-      if (now - e.data[9] > MAX_AGE_MS) {
+      if (now - e.lastReported > this.silenceMs || now - e.data[9] > MAX_POSITION_AGE_MS) {
         this.entries.delete(hex)
         this.version++
         this.tombstones.set(hex, { version: this.version, at: now })

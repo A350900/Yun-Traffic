@@ -6,7 +6,7 @@ import { gzipSync } from 'node:zlib'
 import { AircraftStore } from './store.ts'
 import { Scheduler } from './scheduler.ts'
 import { OpenSkyPoller } from './opensky.ts'
-import { ADSB_FI, RegionSweep } from './regionSweep.ts'
+import { AIRPLANES_LIVE, RegionSweep } from './regionSweep.ts'
 import { flightInfo, flightTrace } from './flightInfo.ts'
 import type { AircraftResponse } from '../shared/wire.ts'
 
@@ -25,8 +25,10 @@ const scheduler = new Scheduler(store)
 if (process.env.ADSBLOL_DISABLED !== '1') scheduler.start()
 const opensky = new OpenSkyPoller(store)
 opensky.start()
-const adsbFi = new RegionSweep(store, ADSB_FI)
-if (process.env.ADSBFI_DISABLED !== '1') adsbFi.start()
+// Main source: OpenSky (worldwide snapshots). Secondary sources fill in
+// aircraft OpenSky doesn't see: airplanes.live (region sweep) and adsb.lol.
+const airplanesLive = new RegionSweep(store, AIRPLANES_LIVE)
+if (process.env.AIRPLANESLIVE_DISABLED !== '1') airplanesLive.start()
 
 function send(req: IncomingMessage, res: ServerResponse, status: number, body: unknown) {
   const json = Buffer.from(JSON.stringify(body))
@@ -62,9 +64,10 @@ function handleAircraft(req: IncomingMessage, res: ServerResponse, url: URL) {
     now: Date.now(),
     stats: {
       total: store.size,
-      lastFetch: Math.max(scheduler.lastFetch ?? 0, adsbFi.status.lastFetch ?? 0) || null,
+      lastFetch: Math.max(scheduler.lastFetch ?? 0, airplanesLive.status.lastFetch ?? 0) || null,
       sweepSeconds: scheduler.sweepSeconds,
       rateLimited: scheduler.rateLimited,
+      airplanesLive: { lastFetch: airplanesLive.status.lastFetch, error: airplanesLive.status.error },
       opensky: {
         enabled: opensky.status.enabled,
         authenticated: opensky.status.authenticated,
@@ -114,7 +117,7 @@ createServer((req, res) => {
       coverage: store.coverage(),
       adsbLol: { lastFetch: scheduler.lastFetch },
       opensky: opensky.status,
-      adsbFi: adsbFi.status,
+      airplanesLive: airplanesLive.status,
     })
   }
   const detail = url.pathname.match(/^\/api\/(flight|trace)\/([0-9a-f~]{6,7})$/i)

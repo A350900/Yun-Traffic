@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { F, type AircraftTuple, type AirportInfo } from '../../shared/wire'
 import type { SelectionStore } from '../flights/selection'
 import { distanceKm } from '../flights/geo'
-import { extrapolate } from '../flights/position'
+import { ESTIMATED_AFTER_MS, extrapolate } from '../flights/position'
 import { ALTITUDE_STOPS } from '../flights/pathLayer'
 import type { UnitSystem } from '../state/settings'
 import { altitudeLegend, fmtAltitude, fmtDistance, fmtSpeed, fmtVerticalRate } from '../units'
@@ -179,7 +179,10 @@ export default function FlightPanel({ aircraft: ac, hex, now, selection, units, 
             <dt>Position</dt>
             <dd>
               {ac[F.Lat].toFixed(3)}, {ac[F.Lon].toFixed(3)}
-              <span className="dim"> · {age(now - ac[F.PosTime])}</span>
+              <span className="dim">
+                {' '}· {age(now - ac[F.PosTime])}
+                {now - ac[F.PosTime] > ESTIMATED_AFTER_MS && ' · estimated'}
+              </span>
             </dd>
           </div>
           {trace && trace.points.length > 1 && (

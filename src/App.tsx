@@ -50,7 +50,7 @@ export default function App() {
 
   return (
     <main className="app">
-      <FlightMap selected={selected} onSelect={setSelected} onFeed={onFeed} dayNight={layers.dayNight} radar={radar} selection={selection} />
+      <FlightMap onSelect={setSelected} onFeed={onFeed} dayNight={layers.dayNight} radar={radar} selection={selection} />
       <TopBar />
       {selected && (
         <FlightPanel

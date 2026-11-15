@@ -43,17 +43,19 @@ adsb.lol API ──► server/ (paced poller + in-memory store) ──► /api/a
                                                  ──► GeoJSON source ──► WebGL symbol layer
 ```
 
-- **Two data sources, merged by aircraft (ICAO hex), newest position wins:**
-  - **OpenSky Network** (`server/opensky.ts`): one `/states/all` request returns every aircraft
-    worldwide. Paced from OpenSky's "credits remaining" header so the daily allowance is never
-    exceeded: ~every 8 min anonymous, ~90 s with a free account (`yun opensky`).
-  - **adsb.lol** (`server/scheduler.ts`): no "all aircraft" endpoint and strict rate limits, so a
-    paced loop sweeps the world **by aircraft type** (which also supplies type + registration,
-    which OpenSky lacks) and fetches **everything within 250 nm** of where users are zoomed in.
-  - **adsb.fi** (`server/regionSweep.ts`): 250 nm area queries at its 1 request/second limit. The
-    world (56°S–72°N) is tiled into ~1,140 overlapping circles, visited busiest-first using
-    OpenSky's snapshot as a density map; busy regions come round every few minutes.
-  - airplanes.live was evaluated but requires contacting them for API access.
+- **Three data sources, merged by aircraft (ICAO hex), newest position wins.** OpenSky is the
+  main source; the others fill in aircraft it doesn't see:
+  - **OpenSky Network** (main, `server/opensky.ts`): one `/states/all` request returns every
+    aircraft worldwide. Paced from OpenSky's "credits remaining" header so the daily allowance is
+    never exceeded: every ~8–14 min anonymous, ~90 s with a free account (`yun opensky`).
+  - **airplanes.live** (`server/regionSweep.ts`): 250 nm area queries via their documented REST
+    API at its 1 request/second limit. The world (56°S–72°N) is tiled into ~1,140 overlapping
+    circles, visited busiest-first. If access is refused (HTTP 401/403), it backs off for 10 min
+    and reports the reason in `/api/health`.
+  - **adsb.lol** (`server/scheduler.ts`): sweeps **by aircraft type** (which also supplies type and
+    registration) and fetches **everything within 250 nm** of where users are zoomed in.
+- Aircraft are kept while any source still reports them (over oceans positions can be many minutes
+  old); cruising aircraft are dead-reckoned for up to 30 min and drawn faded as "estimated".
 - Type/registration are remembered per aircraft for 24 h and filled into OpenSky positions.
 - `/api/aircraft?since=<version>` returns only aircraft that changed since the client's last poll.
 - The browser projects each aircraft forward along its track at its ground speed (max 4 min),
@@ -99,9 +101,9 @@ seams), and repaints them with the palette in `src/layers/radarStyle.ts`.
 | `OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET` | – | OpenSky API client (put in `.env`; `yun opensky` does this) |
 | `OPENSKY_MIN_INTERVAL_S` | `45` | Never poll OpenSky faster than this |
 | `OPENSKY_DISABLED` | – | Set to `1` to turn OpenSky off |
-| `ADSBFI_INTERVAL_MS` | `1100` | Pace of adsb.fi requests (their limit is 1/s) |
-| `ADSBFI_DISABLED` | – | Set to `1` to turn adsb.fi off |
+| `AIRPLANESLIVE_INTERVAL_MS` | `1100` | Pace of airplanes.live requests (their limit is 1/s) |
+| `AIRPLANESLIVE_DISABLED` | – | Set to `1` to turn airplanes.live off |
 
 Map style and logo variant: `src/config/theme.ts`.
 
-Aircraft data © adsb.lol contributors (ODbL), The OpenSky Network and [adsb.fi](https://adsb.fi) (non-commercial use). Map © OpenFreeMap / OpenMapTiles / OpenStreetMap.
+Aircraft data © The OpenSky Network, [airplanes.live](https://airplanes.live) and adsb.lol contributors (ODbL) (non-commercial use). Map © OpenFreeMap / OpenMapTiles / OpenStreetMap.
