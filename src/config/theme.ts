@@ -8,20 +8,20 @@ interface ThemeConfig {
   mapStyle: string
   /** Logo to show over the map: light text for dark maps, dark text for light maps */
   logo: string
-  /** Color shown behind the globe (space) */
-  spaceColor: string
+  /** Shown while tiles load */
+  background: string
 }
 
 export const THEMES: Record<ThemeName, ThemeConfig> = {
   dark: {
     mapStyle: 'https://tiles.openfreemap.org/styles/dark',
     logo: '/brand/logo-light.png',
-    spaceColor: '#07060c',
+    background: '#0e0e10',
   },
   light: {
     mapStyle: 'https://tiles.openfreemap.org/styles/positron',
     logo: '/brand/logo-dark.png',
-    spaceColor: '#dfe4ec',
+    background: '#f2f3f0',
   },
 }
 

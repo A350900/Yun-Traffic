@@ -28,17 +28,8 @@ export const PlusIcon = (p: P) => (
 export const MinusIcon = (p: P) => (
   <svg {...base} {...p}><path d="M5 12h14" /></svg>
 )
-export const GlobeIcon = (p: P) => (
-  <svg {...base} {...p}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z" /></svg>
-)
-export const FlatMapIcon = (p: P) => (
-  <svg {...base} {...p}><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2Z" /><path d="M9 4v14M15 6v14" /></svg>
-)
 export const LocateIcon = (p: P) => (
   <svg {...base} {...p}><path d="m3 11 18-8-8 18-2-8Z" /></svg>
-)
-export const CompassIcon = (p: P) => (
-  <svg {...base} {...p}><path d="m12 3 4 9h-8Z" fill="currentColor" stroke="none" /><path d="m12 21-4-9h8Z" opacity=".4" fill="currentColor" stroke="none" /></svg>
 )
 export const LayersIcon = (p: P) => (
   <svg {...base} {...p}><path d="m12 3 9 5-9 5-9-5Z" /><path d="m3 13 9 5 9-5" /></svg>
