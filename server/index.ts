@@ -8,6 +8,7 @@ import { Scheduler } from './scheduler.ts'
 import { OpenSkyPoller } from './opensky.ts'
 import { AIRPLANES_LIVE, RegionSweep } from './regionSweep.ts'
 import { flightInfo, flightTrace } from './flightInfo.ts'
+import { SimRecorder } from './sim/recorder.ts' // simulated traffic
 import type { AircraftResponse } from '../shared/wire.ts'
 
 // Honour HTTPS_PROXY when one is set (e.g. in sandboxed/corporate networks).
@@ -29,6 +30,11 @@ opensky.start()
 // aircraft OpenSky doesn't see: airplanes.live (region sweep) and adsb.lol.
 const airplanesLive = new RegionSweep(store, AIRPLANES_LIVE)
 if (process.env.AIRPLANESLIVE_DISABLED !== '1') airplanesLive.start()
+
+// simulated traffic: records live coverage, totals and airlines (server/sim/)
+const SIM_ENABLED = process.env.SIM_DISABLED !== '1'
+const simRecorder = new SimRecorder(store)
+if (SIM_ENABLED) simRecorder.start()
 
 function send(req: IncomingMessage, res: ServerResponse, status: number, body: unknown) {
   const json = Buffer.from(JSON.stringify(body))
@@ -114,6 +120,7 @@ createServer((req, res) => {
     return send(req, res, 200, {
       ok: true,
       aircraft: store.size,
+      sim: SIM_ENABLED ? simRecorder.status : 'disabled', // simulated traffic
       coverage: store.coverage(),
       adsbLol: { lastFetch: scheduler.lastFetch },
       opensky: opensky.status,
@@ -140,6 +147,9 @@ createServer((req, res) => {
     )
     return
   }
+  // simulated traffic: coverage map and recorded totals
+  if (SIM_ENABLED && req.method === 'GET' && url.pathname === '/api/sim/coverage') return send(req, res, 200, simRecorder.coverage())
+  if (SIM_ENABLED && req.method === 'GET' && url.pathname === '/api/sim/stats') return send(req, res, 200, { series: simRecorder.series() })
   if (url.pathname.startsWith('/api/')) return send(req, res, 404, { error: 'not found' })
   serveStatic(res, url.pathname)
 }).listen(PORT, () => {

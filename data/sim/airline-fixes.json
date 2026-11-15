@@ -1,0 +1,73 @@
+{
+  "_about": "Airlines in the 2014 OpenFlights route data that no longer fly under that name. 'removed': ceased, their routes are dropped. 'mergedInto': routes are given to the successor airline (ICAO code). Note: OpenFlights matches routes to airlines by 2-letter IATA code, and codes are reused after an airline closes, so the build picks the airline that holds the code today (seen live, else active). Edit freely; an airline seen flying in live data is always kept. Rebuild with: node scripts/sim/build-routes.mjs",
+  "removed": {
+    "BER": "Air Berlin (ceased 2017)",
+    "MON": "Monarch Airlines (ceased 2017)",
+    "JAI": "Jet Airways (ceased 2019)",
+    "GMI": "Germania (ceased 2019)",
+    "WOW": "WOW air (ceased 2019)",
+    "TCX": "Thomas Cook Airlines (ceased 2019)",
+    "BEE": "Flybe (ceased 2023)",
+    "TSO": "Transaero (ceased 2015)",
+    "SOV": "Saratov Airlines (ceased 2018)",
+    "MOV": "VIM Avia (ceased 2017)",
+    "ADR": "Adria Airways (ceased 2019)",
+    "AAF": "Aigle Azur (ceased 2019)",
+    "XLF": "XL Airways France (ceased 2019)",
+    "PRI": "Primera Air (ceased 2018)",
+    "DWT": "Darwin Airline (ceased 2017)",
+    "ELL": "Estonian Air (ceased 2015)",
+    "GOW": "Go First (ceased 2023)",
+    "MNO": "Mango (ceased 2022)",
+    "EXY": "South African Express (ceased 2020)",
+    "CAW": "Comair (ceased 2022)",
+    "NMB": "Air Namibia (ceased 2021)",
+    "ISS": "Air Italy (ceased 2020)",
+    "AIJ": "Interjet (ceased 2020)",
+    "ONE": "Avianca Brasil (ceased 2019)",
+    "KFR": "Kingfisher Airlines (ceased 2012)",
+    "JKK": "Spanair (ceased 2012)",
+    "MAH": "Malév (ceased 2012)",
+    "AUI": "Ukraine International Airlines (suspended 2022)"
+  },
+  "mergedInto": {
+    "AZA": "ITY",
+    "VRD": "ASA",
+    "AWE": "AAL",
+    "GWI": "EWG",
+    "VTI": "AIC",
+    "HDA": "CPA",
+    "SLK": "SIA",
+    "TGG": "VOZ",
+    "VNL": "APJ",
+    "ORB": "SDM",
+    "DNV": "SDM",
+    "THD": "THA",
+    "USA": "AAL",
+    "TRS": "SWA",
+    "JAS": "JAL",
+    "NAX": "NOZ"
+  },
+  "addAirlines": {
+    "ITY": {
+      "iata": "AZ",
+      "name": "ITA Airways",
+      "country": "Italy"
+    }
+  },
+  "codeOverrides": {
+    "_about": "Airline code -> airline actually flying it in that country, for airlines missing from OpenFlights' airline list. Key: 'IATA code|Country' (OpenFlights country spelling).",
+    "GS|China": {
+      "icao": "GCR",
+      "iata": "GS",
+      "name": "Tianjin Airlines",
+      "country": "China"
+    },
+    "5Z|South Africa": {
+      "icao": "KEM",
+      "iata": "5Z",
+      "name": "CemAir",
+      "country": "South Africa"
+    }
+  }
+}

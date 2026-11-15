@@ -74,6 +74,18 @@ terms require). `/api/trace/:hex` returns the path flown since takeoff from adsb
 draws it coloured by altitude, plus a dashed great-circle line to the destination.
 Scheduled times aren't available from free sources.
 
+### Simulated traffic (in progress)
+
+Fills gaps in live coverage (oceans, China, Africa, …) with believable,
+clearly-marked illustrative flights, time-of-day and month aware. Built in
+phases; code in `server/sim/`, `shared/sim/`, `scripts/sim/` and data in
+`data/sim/` (see `data/sim/README.md`). Set `SIM_DISABLED=1` to turn it off.
+
+- **Phase 0 (done):** route network from OpenFlights (cleaned), traffic model
+  inputs, and a recorder that saves live coverage per 2° cell and hour, totals
+  per region and airlines seen (`.cache/sim/`, endpoints `/api/sim/coverage`,
+  `/api/sim/stats`).
+
 ### Weather radar
 
 RainViewer's free radar tiles (past 2 h, 10-minute frames, zoom ≤ 7, attribution required).
@@ -101,6 +113,7 @@ seams), and repaints them with the palette in `src/layers/radarStyle.ts`.
 | `OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET` | – | OpenSky API client (put in `.env`; `yun opensky` does this) |
 | `OPENSKY_MIN_INTERVAL_S` | `45` | Never poll OpenSky faster than this |
 | `OPENSKY_DISABLED` | – | Set to `1` to turn OpenSky off |
+| `SIM_DISABLED` | – | Set to `1` to turn simulated traffic (and its recorder) off |
 | `AIRPLANESLIVE_INTERVAL_MS` | `1100` | Pace of airplanes.live requests (their limit is 1/s) |
 | `AIRPLANESLIVE_DISABLED` | – | Set to `1` to turn airplanes.live off |
 
