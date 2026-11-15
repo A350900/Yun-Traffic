@@ -1,0 +1,192 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&display=swap');
+
+:root {
+  /* Brand — taken from the Yún Traffic logo */
+  --brand: #c8456b;
+  --brand-soft: #f2c6d2;
+  --brand-ink: #3d1426;
+
+  /* Glass UI over the map */
+  --panel: rgba(18, 16, 24, 0.78);
+  --panel-solid: #16141d;
+  --panel-hover: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.09);
+  --text: #f4eef1;
+  --text-dim: #a59ca3;
+
+  --radius: 12px;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+
+  font-family: 'Lexend', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; overflow: hidden; background: #07060c; }
+button { font: inherit; color: inherit; cursor: pointer; }
+
+.app { position: relative; width: 100%; height: 100%; }
+.map { position: absolute; inset: 0; }
+
+/* ---------- Top bar ---------- */
+.topbar {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px 28px;
+  background: linear-gradient(to bottom, rgba(7, 6, 12, 0.85), rgba(7, 6, 12, 0));
+  pointer-events: none;
+}
+.topbar > * { pointer-events: auto; }
+.topbar-left { justify-self: start; }
+.topbar-right { justify-self: end; display: flex; align-items: center; gap: 6px; }
+
+.brand { display: block; line-height: 0; }
+.brand img { height: 60px; width: auto; filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.5)); }
+
+.clock { display: flex; align-items: baseline; gap: 6px; }
+.clock-time { font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.clock-zone { font-size: 12px; color: var(--text-dim); letter-spacing: 0.08em; }
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 300px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+  color: var(--text-dim);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.search:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(200, 69, 107, 0.25); }
+.search input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+.search input::placeholder { color: var(--text-dim); }
+.search kbd {
+  font: inherit;
+  font-size: 11px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+.icon-btn:hover { background: var(--panel-hover); }
+
+/* ---------- Map controls (right side) ---------- */
+.map-controls {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.map-controls button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+}
+.map-controls button:hover { background: var(--panel-hover); color: var(--brand-soft); }
+.control-group, .control-single {
+  background: var(--panel) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.control-group { display: flex; flex-direction: column; }
+.control-group button + button { border-top: 1px solid var(--border); }
+.control-single svg { transition: transform 0.2s; }
+
+/* ---------- Bottom dock ---------- */
+.dock {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+}
+.dock button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 72px;
+  padding: 8px 10px 6px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+  transition: background 0.15s, color 0.15s;
+}
+.dock button:hover { background: var(--panel-hover); color: var(--text); }
+.dock button.active { background: rgba(200, 69, 107, 0.18); color: var(--brand-soft); }
+.dock button.active svg { color: var(--brand); }
+
+/* MapLibre attribution, restyled to fit */
+.maplibregl-ctrl-attrib {
+  background: rgba(18, 16, 24, 0.6) !important;
+  color: var(--text-dim);
+}
+.maplibregl-ctrl-attrib a { color: var(--text-dim); }
+.maplibregl-ctrl-attrib-button { filter: invert(1); }
+
+/* ---------- Small screens ---------- */
+@media (max-width: 860px) {
+  .topbar { grid-template-columns: auto 1fr auto; padding: 10px 12px 24px; }
+  .brand { grid-column: 2; justify-self: center; }
+  .brand img { height: 38px; }
+  .search { width: 40px; padding: 0; justify-content: center; }
+  .search input, .search kbd { display: none; }
+  .clock-time { font-size: 16px; }
+  .map-controls { right: 12px; }
+}
+@media (max-width: 560px) {
+  .topbar-left { display: none; }
+  .topbar { grid-template-columns: 1fr auto; }
+  .brand { grid-column: 1; justify-self: start; }
+  .dock { left: 12px; right: 12px; transform: none; bottom: 12px; justify-content: space-between; }
+  .dock button { min-width: 0; flex: 1; padding: 8px 2px 6px; font-size: 10.5px; }
+  .map-controls { top: auto; bottom: 96px; transform: none; }
+}
