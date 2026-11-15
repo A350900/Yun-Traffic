@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { F, type AircraftTuple, type AirportInfo } from '../../shared/wire'
+import { F, Kind, type AircraftTuple, type AirportInfo } from '../../shared/wire'
 import type { SelectionStore } from '../flights/selection'
 import { distanceKm } from '../flights/geo'
 import { ESTIMATED_AFTER_MS, extrapolate } from '../flights/position'
@@ -71,6 +71,12 @@ export default function FlightPanel({ aircraft: ac, hex, now, selection, units, 
   const typeCode = ac?.[F.Type] ?? info?.aircraft.typeCode
   const reg = ac?.[F.Registration] ?? info?.aircraft.registration
   const subtitle = [info?.airline?.name, info?.aircraft.name ?? typeCode].filter(Boolean)
+  // Estimated aircraft (not live): continued out of coverage, or simulated from yesterday.
+  const kind = ac?.[F.Kind] ?? 0
+  const estimate = info?.estimate ?? null
+  const simulated = kind === Kind.Simulated || estimate?.kind === 'simulated'
+  const continued = kind === Kind.Continued || estimate?.kind === 'continued'
+  const hm24 = (ms: number) => new Date(ms).toISOString().slice(11, 16)
 
   // Progress along the route, from the aircraft's current (estimated) position.
   const route = info?.route ?? null
@@ -81,12 +87,14 @@ export default function FlightPanel({ aircraft: ac, hex, now, selection, units, 
     const leftKm = distanceKm(lat, lon, route.destination.lat, route.destination.lon)
     const gs = ac[F.Gs]
     const airborne = ac[F.Alt] !== -1 && gs != null && gs > 60
+    const sim = estimate?.kind === 'simulated' ? estimate : null
     progress = {
       flownKm,
       leftKm,
       frac: Math.min(1, Math.max(0, flownKm / (flownKm + leftKm || 1))),
-      elapsed: trace?.takeoff ? hm(now - trace.takeoff) : null,
-      eta: airborne ? hm((leftKm / (gs * 1.852)) * 3_600_000) : null,
+      // Simulated flights follow yesterday's times; others use takeoff + current speed.
+      elapsed: sim ? hm(now - sim.departed) : trace?.takeoff ? hm(now - trace.takeoff) : null,
+      eta: sim ? hm(sim.arrives - now) : airborne ? hm((leftKm / (gs * 1.852)) * 3_600_000) : null,
     }
   }
 
@@ -98,10 +106,17 @@ export default function FlightPanel({ aircraft: ac, hex, now, selection, units, 
           <p className="fp-subtitle">
             {loading ? <span className="skeleton" style={{ width: 190 }} /> : subtitle.join(' | ') || 'Unknown aircraft'}
           </p>
+          {(simulated || continued) && (
+            <p className="estimate-banner">
+              {simulated
+                ? "Simulated · based on yesterday's flight at this time. Not live data."
+                : `Estimated position · out of receiver range${estimate?.kind === 'continued' && estimate.lastSeen ? ` since ${hm24(estimate.lastSeen)} UTC` : ''}, continuing along its route.`}
+            </p>
+          )}
           <div className="chips">
             {typeCode && <span className="chip">{typeCode}</span>}
             {reg && <span className="chip">{reg}</span>}
-            <span className="chip mono">{hex.toUpperCase()}</span>
+            {!simulated && <span className="chip mono">{hex.toUpperCase()}</span>}
           </div>
         </div>
         <button className="close" onClick={onClose} aria-label="Close">×</button>
@@ -146,8 +161,8 @@ export default function FlightPanel({ aircraft: ac, hex, now, selection, units, 
         )}
       </section>
 
-      {/* Photo */}
-      {info?.photo ? (
+      {/* Photo (none for simulated flights: the aircraft operating it today is unknown) */}
+      {simulated ? null : info?.photo ? (
         <a className="fp-photo" href={info.photo.link} target="_blank" rel="noreferrer" title="View on Planespotters.net">
           <img src={info.photo.src} alt={`${reg ?? ''} ${info.aircraft.name ?? ''}`.trim()} loading="lazy" />
           <span className="photo-credit">© {info.photo.photographer} · Planespotters.net</span>
@@ -168,20 +183,20 @@ export default function FlightPanel({ aircraft: ac, hex, now, selection, units, 
       )}
 
       {ac ? (
-        <dl>
+        <dl className={simulated ? 'estimated-values' : undefined}>
           <div><dt>Altitude</dt><dd>{fmtAltitude(ac[F.Alt], units)}</dd></div>
           <div><dt>Ground speed</dt><dd>{fmtSpeed(ac[F.Gs], units)}</dd></div>
           <div><dt>Track</dt><dd>{ac[F.Track] == null ? '—' : `${Math.round(ac[F.Track]!)}°`}</dd></div>
           <div><dt>Vertical rate</dt><dd>{fmtVerticalRate(ac[F.VRate], units)}</dd></div>
-          <div><dt>Squawk</dt><dd>{ac[F.Squawk] ?? '—'}</dd></div>
-          <div><dt>Category</dt><dd>{ac[F.Category] ?? '—'}</dd></div>
+          {!simulated && <div><dt>Squawk</dt><dd>{ac[F.Squawk] ?? '—'}</dd></div>}
+          {!simulated && <div><dt>Category</dt><dd>{ac[F.Category] ?? '—'}</dd></div>}
           <div className="wide">
             <dt>Position</dt>
             <dd>
               {ac[F.Lat].toFixed(3)}, {ac[F.Lon].toFixed(3)}
               <span className="dim">
                 {' '}· {age(now - ac[F.PosTime])}
-                {now - ac[F.PosTime] > ESTIMATED_AFTER_MS && ' · estimated'}
+                {(kind !== Kind.Live || now - ac[F.PosTime] > ESTIMATED_AFTER_MS) && ' · estimated'}
               </span>
             </dd>
           </div>

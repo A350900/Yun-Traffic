@@ -106,10 +106,17 @@ const bucket = (alt: number) => (alt < 0 ? 0 : Math.round(alt / 1000) * 1000)
  * Redraw the selected flight's lines. `live` is the aircraft's current
  * (extrapolated) position and altitude, so the path always reaches the icon.
  */
-export function updatePath(map: MLMap, trace: FlightTrace | null, info: FlightInfo | null, live: { lon: number; lat: number; alt: number } | null) {
+export function updatePath(
+  map: MLMap,
+  trace: FlightTrace | null,
+  info: FlightInfo | null,
+  live: { lon: number; lat: number; alt: number } | null,
+  /** The current position is an estimate (out of coverage): don't draw it as recorded path. */
+  liveEstimated = false,
+) {
   // --- flown path. Points: [lon, lat, alt]
   const pts: [number, number, number][] = (trace?.points ?? []).map((p) => [p[2], p[1], p[3]])
-  if (live) pts.push([live.lon, live.lat, live.alt])
+  if (live && !liveEstimated) pts.push([live.lon, live.lat, live.alt])
   // Unwrap longitudes so a flight crossing the antimeridian is drawn continuously.
   for (let i = 1; i < pts.length; i++) {
     while (pts[i][0] - pts[i - 1][0] > 180) pts[i][0] -= 360
@@ -139,25 +146,35 @@ export function updatePath(map: MLMap, trace: FlightTrace | null, info: FlightIn
   const route = info?.route && info.route.plausible ? info.route : null
   const remaining: Feature[] = []
   const airports: Feature[] = []
+  // Out of coverage: dashed from the last recorded position to the estimated one.
+  if (liveEstimated && live && pts.length) {
+    const last = pts[pts.length - 1]
+    const seg = greatCircle(last[1], ((last[0] + 540) % 360) - 180, live.lat, live.lon, last[0])
+    remaining.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: seg } })
+    pts.push([seg[seg.length - 1][0], live.lat, live.alt])
+  }
   if (route) {
     const dest = route.destination
-    const from = pts.length ? pts[pts.length - 1] : [route.origin.lon, route.origin.lat]
+    const from = pts.length ? pts[pts.length - 1] : live ? [live.lon, live.lat] : [route.origin.lon, route.origin.lat]
     const line = greatCircle(from[1], ((from[0] + 540) % 360) - 180, dest.lat, dest.lon, from[0])
     remaining.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line } })
     const endLon = line[line.length - 1][0]
     // Put the origin marker on the same "copy" of the world as the start of the path.
     let startLon = route.origin.lon
-    if (pts.length) {
-      while (startLon - pts[0][0] > 180) startLon -= 360
-      while (startLon - pts[0][0] < -180) startLon += 360
+    const refLon = pts.length ? pts[0][0] : live?.lon
+    if (refLon != null) {
+      while (startLon - refLon > 180) startLon -= 360
+      while (startLon - refLon < -180) startLon += 360
     }
-    // Tracking began after takeoff: the first part of the flight is unknown.
-    const first = trace?.points[0]
-    if (first && first[3] !== -1 && pts.length && distanceKm(route.origin.lat, route.origin.lon, first[1], first[2]) > 10) {
+    // Tracking began after takeoff (or there's no recorded path at all, e.g. a
+    // simulated flight): the first part of the flight is unknown, so dashed.
+    const first = trace?.points[0] ?? (live ? ([0, live.lat, live.lon, live.alt] as const) : undefined)
+    const firstLon = pts.length ? pts[0][0] : live?.lon
+    if (first && first[3] !== -1 && firstLon != null && distanceKm(route.origin.lat, route.origin.lon, first[1], first[2]) > 10) {
       remaining.push({
         type: 'Feature',
         properties: {},
-        geometry: { type: 'LineString', coordinates: greatCircle(route.origin.lat, startLon, first[1], pts[0][0], startLon) },
+        geometry: { type: 'LineString', coordinates: greatCircle(route.origin.lat, startLon, first[1], firstLon, startLon) },
       })
     }
     airports.push(

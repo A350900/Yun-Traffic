@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import FlightMap from './components/FlightMap'
 import TopBar from './components/TopBar'
 import BottomDock from './components/BottomDock'
@@ -9,14 +9,26 @@ import { useLayerSettings } from './state/layers'
 import { useSettings } from './state/settings'
 import { RadarController } from './layers/radar'
 import { SelectionStore } from './flights/selection'
-import { F } from '../shared/wire'
+import { F, Kind } from '../shared/wire'
 
 const synthetic = new URLSearchParams(location.search).has('stress')
+
+function countEstimated(aircraft: FeedState['aircraft'], kinds: Set<number>) {
+  let n = 0
+  for (const ac of aircraft.values()) if (ac[F.Kind] && kinds.has(ac[F.Kind]!)) n++
+  return n
+}
 
 export default function App() {
   const [selected, setSelected] = useState<string | null>(null)
   const [layers, setLayers] = useLayerSettings()
   const [settings, setSettings] = useSettings()
+  const showKinds = useMemo(() => {
+    const k = new Set<number>()
+    if (settings.ghostsContinued) k.add(Kind.Continued)
+    if (settings.ghostsSimulated) k.add(Kind.Simulated)
+    return k
+  }, [settings.ghostsContinued, settings.ghostsSimulated])
   const [selection] = useState(() => new SelectionStore())
   const [radar] = useState(
     () => new RadarController({ visible: layers.radar, style: layers.radarStyle, opacity: layers.radarOpacity }),
@@ -50,7 +62,7 @@ export default function App() {
 
   return (
     <main className="app">
-      <FlightMap onSelect={setSelected} onFeed={onFeed} dayNight={layers.dayNight} radar={radar} selection={selection} />
+      <FlightMap onSelect={setSelected} onFeed={onFeed} dayNight={layers.dayNight} radar={radar} selection={selection} showKinds={showKinds} />
       <TopBar />
       {selected && (
         <FlightPanel
@@ -63,7 +75,8 @@ export default function App() {
         />
       )}
       <FeedStatus
-        count={feed?.aircraft.size ?? 0}
+        count={feed?.stats?.total ?? feed?.aircraft.size ?? 0}
+        estimated={feed ? countEstimated(feed.aircraft, showKinds) : 0}
         stats={feed?.stats ?? null}
         error={feed?.error ?? null}
         now={serverNow}

@@ -65,6 +65,8 @@ interface Props {
   dayNight: boolean
   radar: RadarController
   selection: SelectionStore
+  /** Estimated kinds to draw (Kind.Continued / Kind.Simulated) */
+  showKinds: Set<number>
 }
 
 /** Rough radius of the visible area in nautical miles. */
@@ -76,12 +78,15 @@ function focusFor(map: MLMap): FocusHint | null {
   return { lat: c.lat, lon: c.lng, radiusNm: Math.max(radiusNm, 25) }
 }
 
-function FlightMap({ onSelect, onFeed, dayNight, radar, selection }: Props) {
+function FlightMap({ onSelect, onFeed, dayNight, radar, selection, showKinds }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
   const onSelectRef = useRef(onSelect)
   const onFeedRef = useRef(onFeed)
   const dayNightRef = useRef(dayNight)
+  const showKindsRef = useRef(showKinds)
+  showKindsRef.current = showKinds
+  const redrawAllRef = useRef<() => void>(() => {})
   onSelectRef.current = onSelect
   onFeedRef.current = onFeed
   dayNightRef.current = dayNight
@@ -136,15 +141,19 @@ function FlightMap({ onSelect, onFeed, dayNight, radar, selection }: Props) {
       const win = viewWindow(map)
       windows[b] = win
       lastZoomBand = Math.floor(map.getZoom())
-      sentPerBand[b] = updateAircraftBand(map, b, feed.state.aircraft, now(), win, groups)
+      sentPerBand[b] = updateAircraftBand(map, b, feed.state.aircraft, now(), win, groups, showKindsRef.current)
       lastDraw[b] = lastAnyDraw = performance.now()
       ;(window as unknown as Record<string, unknown>).__yun = { count: feed.state.aircraft.size, sent: totalSent(), map }
     }
 
     // Refresh every group, one per animation frame so no single frame does it all.
     let refreshing = false
+    let refreshAgain = false
     const drawAllProgressively = () => {
-      if (refreshing) return
+      if (refreshing) {
+        refreshAgain = true // e.g. a setting changed mid-refresh: run once more after
+        return
+      }
       refreshing = true
       refreshAll = false
       groups = viewWindow(map) ? 1 : BANDS
@@ -152,10 +161,18 @@ function FlightMap({ onSelect, onFeed, dayNight, radar, selection }: Props) {
       const step = () => {
         drawBand(b++)
         if (b < BANDS) requestAnimationFrame(step)
-        else refreshing = false
+        else {
+          refreshing = false
+          if (refreshAgain) {
+            refreshAgain = false
+            drawAllProgressively()
+          }
+        }
       }
       requestAnimationFrame(step)
     }
+
+    redrawAllRef.current = drawAllProgressively
 
     // The selected flight: highlight + path, ending at its current position.
     const drawSelection = () => {
@@ -171,7 +188,13 @@ function FlightMap({ onSelect, onFeed, dayNight, radar, selection }: Props) {
             return { lon, lat, alt: ac[F.Alt] ?? 0 }
           })()
         : null
-      updatePath(map, sel.trace?.hex === sel.hex ? sel.trace : null, sel.info?.hex === sel.hex ? sel.info : null, live)
+      updatePath(
+        map,
+        sel.trace?.hex === sel.hex ? sel.trace : null,
+        sel.info?.hex === sel.hex ? sel.info : null,
+        live,
+        Boolean(ac?.[F.Kind]), // estimated position: drawn dashed
+      )
     }
     const unsubscribeSelection = selection.subscribe(drawSelection)
 
@@ -258,6 +281,9 @@ function FlightMap({ onSelect, onFeed, dayNight, radar, selection }: Props) {
     const map = mapRef.current
     if (map) setDayNightVisible(map, dayNight)
   }, [dayNight])
+
+  // Estimated-aircraft switches changed: redraw everything.
+  useEffect(() => redrawAllRef.current(), [showKinds])
 
   const locate = () => {
     const map = mapRef.current

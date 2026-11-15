@@ -24,6 +24,17 @@ export const F = {
   Category: 11,
   /** Vertical rate, ft/min */
   VRate: 12,
+  /** What this entry is: live data, or an estimate (see Kind) */
+  Kind: 13,
+} as const
+
+/** Live aircraft, or an estimated "ghost" drawn where there's no live data. */
+export const Kind = {
+  Live: 0,
+  /** Real aircraft that left receiver coverage, continued along its route */
+  Continued: 1,
+  /** Yesterday's flight at this time, shifted 24 h (not live data) */
+  Simulated: 2,
 } as const
 
 export type AircraftTuple = [
@@ -40,6 +51,8 @@ export type AircraftTuple = [
   squawk: string | null,
   category: string | null,
   vrate: number | null,
+  /** Kind.* — omitted (= live) for live data */
+  kind?: number,
 ]
 
 export interface AircraftResponse {
@@ -56,6 +69,7 @@ export interface AircraftResponse {
 }
 
 export interface FeedStats {
+  /** Live aircraft (estimates not included) */
   total: number
   /** Epoch ms of the most recent successful upstream fetch */
   lastFetch: number | null
@@ -100,6 +114,10 @@ export interface FlightInfo {
   route: { origin: AirportInfo; destination: AirportInfo; plausible: boolean; originCorrected: boolean; verified: boolean } | null
   /** planespotters.net photo; must be shown with the photographer credit and link */
   photo: { src: string; link: string; photographer: string } | null
+  /** Set for estimated aircraft (not live data) */
+  estimate?:
+    | { kind: 'continued'; lastSeen?: number }
+    | { kind: 'simulated'; departed: number; arrives: number }
 }
 
 export interface FlightTrace {

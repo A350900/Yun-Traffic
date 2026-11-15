@@ -112,6 +112,16 @@ export class OpenSkyPoller {
     this.store = store
   }
 
+  /** Auth headers for other OpenSky endpoints (flight history). */
+  async authHeaders(): Promise<{ headers: Record<string, string>; authenticated: boolean }> {
+    try {
+      const token = await this.getToken()
+      return token ? { headers: { Authorization: `Bearer ${token}` }, authenticated: true } : { headers: {}, authenticated: false }
+    } catch {
+      return { headers: {}, authenticated: false }
+    }
+  }
+
   get hasCredentials() {
     return Boolean(this.clientId && this.clientSecret)
   }
