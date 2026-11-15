@@ -1,5 +1,7 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { FilterIcon, LayersIcon, PlaybackIcon, SettingsIcon, StatsIcon, WeatherIcon } from './Icons'
+import LayersMenu from './LayersMenu'
+import type { LayerSettings } from '../state/layers'
 
 const ITEMS: { id: string; label: string; icon: ReactNode }[] = [
   { id: 'layers', label: 'Layers', icon: <LayersIcon /> },
@@ -10,22 +12,47 @@ const ITEMS: { id: string; label: string; icon: ReactNode }[] = [
   { id: 'settings', label: 'Settings', icon: <SettingsIcon /> },
 ]
 
-export default function BottomDock() {
+interface Props {
+  layers: LayerSettings
+  onLayersChange: (next: LayerSettings) => void
+}
+
+export default function BottomDock({ layers, onLayersChange }: Props) {
   const [active, setActive] = useState<string | null>(null)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Close the open menu on Escape or a click outside the dock.
+  useEffect(() => {
+    if (!active) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setActive(null)
+    const onDown = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setActive(null)
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('pointerdown', onDown)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('pointerdown', onDown)
+    }
+  }, [active])
 
   return (
-    <nav className="dock" aria-label="Map tools">
-      {ITEMS.map((item) => (
-        <button
-          key={item.id}
-          className={active === item.id ? 'active' : ''}
-          aria-pressed={active === item.id}
-          onClick={() => setActive(active === item.id ? null : item.id)}
-        >
-          {item.icon}
-          <span>{item.label}</span>
-        </button>
-      ))}
-    </nav>
+    <div className="dock-wrap" ref={ref}>
+      {active === 'layers' && <LayersMenu layers={layers} onChange={onLayersChange} />}
+      <nav className="dock" aria-label="Map tools">
+        {ITEMS.map((item) => (
+          <button
+            key={item.id}
+            className={active === item.id ? 'active' : ''}
+            aria-pressed={active === item.id}
+            aria-expanded={item.id === 'layers' ? active === 'layers' : undefined}
+            onClick={() => setActive(active === item.id ? null : item.id)}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
+    </div>
   )
 }

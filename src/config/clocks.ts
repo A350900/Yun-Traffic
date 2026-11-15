@@ -12,8 +12,7 @@ export interface ClockConfig {
 
 export const CLOCKS: ClockConfig[] = [
   { label: 'LAX', timeZone: 'America/Los_Angeles', name: 'Los Angeles' },
-  { label: 'DEN', timeZone: 'America/Denver', name: 'Denver' },
-  { label: 'NYC', timeZone: 'America/New_York', name: 'New York' },
+  { label: 'JFK', timeZone: 'America/New_York', name: 'New York JFK' },
   { label: 'LHR', timeZone: 'Europe/London', name: 'London Heathrow' },
   { label: 'DXB', timeZone: 'Asia/Dubai', name: 'Dubai' },
   { label: 'PVG', timeZone: 'Asia/Shanghai', name: 'Shanghai Pudong' },
