@@ -173,7 +173,7 @@ export class OpenSkyPoller {
       for (const s of body.states ?? []) {
         const t = toTuple(s)
         if (t) {
-          this.store.upsert(t)
+          this.store.upsert(t, 'opensky')
           count++
         }
       }

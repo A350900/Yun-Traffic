@@ -20,8 +20,9 @@ const PORT = Number(process.env.PORT ?? 8787)
 const DIST = join(import.meta.dirname, '..', 'dist')
 
 const store = new AircraftStore()
+setInterval(() => store.prune(), 15_000) // drop aircraft nobody has reported for 12 min
 const scheduler = new Scheduler(store)
-scheduler.start()
+if (process.env.ADSBLOL_DISABLED !== '1') scheduler.start()
 const opensky = new OpenSkyPoller(store)
 opensky.start()
 const adsbFi = new RegionSweep(store, ADSB_FI)
@@ -110,6 +111,7 @@ createServer((req, res) => {
     return send(req, res, 200, {
       ok: true,
       aircraft: store.size,
+      coverage: store.coverage(),
       adsbLol: { lastFetch: scheduler.lastFetch },
       opensky: opensky.status,
       adsbFi: adsbFi.status,

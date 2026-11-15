@@ -85,15 +85,17 @@ seams), and repaints them with the palette in `src/layers/radarStyle.ts`.
 
 - `/#7/51.47/-0.45` — the map view lives in the URL hash (zoom/lat/lon).
 - `/?stress=20000` — synthetic traffic for load-testing the renderer.
-- `/api/health` — server status.
+- `/api/health` — server status, including `coverage`: per source, how many current aircraft it
+  reported in the last 15 min and how many only that source reported.
 
 ### Config
 
 | Env var | Default | |
 |---|---|---|
 | `PORT` | `8787` | API/server port |
-| `POLL_INTERVAL_MS` | `4000` | Fastest pace for adsb.lol requests |
+| `POLL_INTERVAL_MS` | `6000` | Fastest pace for adsb.lol requests |
 | `ADSB_API_BASE` | `https://api.adsb.lol` | Upstream API |
+| `ADSBLOL_DISABLED` | – | Set to `1` to turn the adsb.lol sweep off (flight paths still use it) |
 | `OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET` | – | OpenSky API client (put in `.env`; `yun opensky` does this) |
 | `OPENSKY_MIN_INTERVAL_S` | `45` | Never poll OpenSky faster than this |
 | `OPENSKY_DISABLED` | – | Set to `1` to turn OpenSky off |

@@ -15,6 +15,12 @@ interface Meta {
   at: number
 }
 
+/** Where a position came from (for coverage stats). */
+export type SourceName = 'opensky' | 'adsb.fi' | 'adsb.lol'
+const SOURCES: SourceName[] = ['opensky', 'adsb.fi', 'adsb.lol']
+/** Window for "which sources have seen this aircraft recently". */
+const SEEN_WINDOW_MS = 15 * 60_000
+
 interface Entry {
   data: AircraftTuple
   version: number
@@ -27,6 +33,8 @@ interface Entry {
 export class AircraftStore {
   private entries = new Map<string, Entry>()
   private meta = new Map<string, Meta>()
+  /** source -> (hex -> last time that source reported it) */
+  private seen = new Map<SourceName, Map<string, number>>(SOURCES.map((src) => [src, new Map()]))
   private tombstones = new Map<string, { version: number; at: number }>()
   private version = 0
   /** Oldest version a delta can still be computed from */
@@ -40,6 +48,21 @@ export class AircraftStore {
     return this.entries.size
   }
 
+  /**
+   * Per source: how many current aircraft it reported in the last 15 min,
+   * and how many of those no other source reported (its unique contribution).
+   */
+  coverage() {
+    const out: Record<string, { seen: number; onlyThisSource: number }> = {}
+    for (const src of SOURCES) out[src] = { seen: 0, onlyThisSource: 0 }
+    for (const hex of this.entries.keys()) {
+      const by = SOURCES.filter((src) => this.seen.get(src)!.has(hex))
+      for (const src of by) out[src].seen++
+      if (by.length === 1) out[by[0]].onlyThisSource++
+    }
+    return out
+  }
+
   get(hex: string): AircraftTuple | undefined {
     return this.entries.get(hex)?.data
   }
@@ -48,8 +71,9 @@ export class AircraftStore {
     for (const e of this.entries.values()) fn(e.data)
   }
 
-  upsert(ac: AircraftTuple) {
+  upsert(ac: AircraftTuple, source: SourceName) {
     const hex = ac[0]
+    this.seen.get(source)!.set(hex, Date.now())
     // Learn type/registration/category from whichever source has them.
     if (ac[7] || ac[8]) {
       const m = this.meta.get(hex)
@@ -96,6 +120,7 @@ export class AircraftStore {
       }
     }
     for (const [hex, m] of this.meta) if (now - m.at > META_TTL_MS) this.meta.delete(hex)
+    for (const map of this.seen.values()) for (const [hex, t] of map) if (now - t > SEEN_WINDOW_MS) map.delete(hex)
     for (const [hex, t] of this.tombstones) {
       if (now - t.at > TOMBSTONE_MS) {
         this.tombstones.delete(hex)

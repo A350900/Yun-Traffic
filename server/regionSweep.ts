@@ -142,7 +142,7 @@ export class RegionSweep {
         throw new Error(`HTTP ${res.status}`)
       }
       const aircraft = normalize((await res.json()) as RawResponse)
-      for (const ac of aircraft) this.store.upsert(ac)
+      for (const ac of aircraft) this.store.upsert(ac, 'adsb.fi')
       cell.lastCount = aircraft.length
       this.status.lastFetch = Date.now()
       this.status.requests++

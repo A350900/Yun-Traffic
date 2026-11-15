@@ -72,7 +72,6 @@ export class Scheduler {
       this.timer = setTimeout(loop, wait)
     }
     loop()
-    setInterval(() => this.store.prune(), 15_000)
   }
 
   stop() {
@@ -132,7 +131,7 @@ export class Scheduler {
         result = job.kind === 'mil' ? await military() : await byType(job.type)
         job.lastCount = result.length
       }
-      for (const ac of result) this.store.upsert(ac)
+      for (const ac of result) this.store.upsert(ac, 'adsb.lol')
       this.lastFetch = Date.now()
       this.rateLimited = false
       this.interval = Math.max(MIN_INTERVAL, this.interval * 0.97)
