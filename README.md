@@ -2,13 +2,19 @@
 
 Live flight tracking on a 2D map: MapLibre GL + OpenFreeMap tiles, aircraft data from [adsb.lol](https://adsb.lol).
 
-## Run it
+## Run it on your computer
 
-**Easiest:** double-click `start-windows.bat` (Windows) or `start-mac.command` (Mac).
-It pulls the latest changes, installs anything new, starts the site and opens
-http://localhost:5173. Keep the window open while using the site.
+**Always-on (recommended).** One time per computer, after cloning:
 
-Or by hand:
+- **Windows:** double-click `install-autostart-windows.bat`
+- **Mac:** double-click `install-autostart-mac.command`
+
+From then on Yún Traffic starts invisibly whenever you log in, and
+**http://localhost:5173** just works. It also checks GitHub every minute and
+pulls new changes, which show up in the browser on their own.
+To remove it, use the matching `uninstall-autostart-…` file. Logs: `logs/autorun.log`.
+
+**By hand:**
 
 ```bash
 npm install
