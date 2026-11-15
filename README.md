@@ -12,9 +12,10 @@ new Command Prompt / Terminal window:
 yun start     # starts in the background, then open http://localhost:5173
 yun stop      # stops it and frees its memory (~380 MB while running)
 yun status
+yun update    # pull the latest changes from GitHub right now
 ```
 
-While running it pulls new commits from GitHub every minute; the page updates itself.
+While running it also pulls new commits from GitHub every 15 seconds; the page updates itself.
 If you move the folder, run setup again. `node scripts/yun.mjs remove` uninstalls the
 command. Logs: `logs/autorun.log`.
 

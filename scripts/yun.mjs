@@ -5,9 +5,10 @@
 //   yun start    start Yún Traffic in the background (gets the latest version first)
 //   yun stop     stop it (frees all memory it was using)
 //   yun status   is it running?
+//   yun update   get the latest changes from GitHub right now
 //
-// While running it checks GitHub every minute and pulls new changes, which
-// show up in the browser by themselves.
+// While running it also checks GitHub every 15 seconds and pulls new
+// changes, which show up in the browser by themselves.
 
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -23,7 +24,7 @@ const LOG_FILE = join(LOG_DIR, 'autorun.log')
 const PID_FILE = join(LOG_DIR, 'autorun.pid')
 const IS_WIN = process.platform === 'win32'
 const IS_MAC = process.platform === 'darwin'
-const CHECK_EVERY_MS = 60_000
+const CHECK_EVERY_MS = 15_000
 const URL = 'http://localhost:5173'
 
 const SCRIPT = fileURLToPath(import.meta.url)
@@ -191,6 +192,33 @@ function stop() {
   console.log('Stopped.')
 }
 
+/** Pull right now instead of waiting for the next automatic check. */
+async function update() {
+  const before = lockHash()
+  const r = sh('git', ['pull', '--ff-only'])
+  const out = `${r.stdout ?? ''}${r.stderr ?? ''}`.trim()
+  if (r.status !== 0) {
+    console.log('Could not update:\n' + out)
+    if (/local changes|overwritten/i.test(out)) {
+      console.log('\nYou have unsaved edits in this folder that clash with the new version.')
+    }
+    return
+  }
+  if (/Already up to date/i.test(out)) return console.log('Already up to date.')
+  console.log('Updated to the latest version.')
+  if (lockHash() !== before) {
+    console.log('Dependencies changed, reinstalling...')
+    sh('npm', ['install', '--no-audit', '--no-fund'], { stdio: 'inherit' })
+    if (runningPid()) {
+      stop()
+      await start()
+      return
+    }
+  }
+  if (runningPid()) console.log('The page will refresh by itself in a moment.')
+  else console.log('Type "yun start" to run it.')
+}
+
 // ---------------------------------------------------------------- setup
 
 function removeOldAutostart() {
@@ -225,6 +253,7 @@ function setup() {
   console.log(`Open a NEW ${IS_WIN ? 'Command Prompt' : 'Terminal'} window, then:`)
   console.log('  yun start   -> then open http://localhost:5173')
   console.log('  yun stop    -> when you are done')
+  console.log('  yun update  -> get the latest changes right now')
   console.log('\nIf you move this folder, run setup again from its new location.')
 }
 
@@ -246,7 +275,8 @@ const cmd = process.argv[2]
 if (cmd === 'run') run()
 else if (cmd === 'start') await start()
 else if (cmd === 'stop') stop()
+else if (cmd === 'update') await update()
 else if (cmd === 'status') console.log(runningPid() ? `Running: ${URL}` : 'Not running. Type "yun start".')
 else if (cmd === 'setup') setup()
 else if (cmd === 'remove') removeSetup()
-else console.log('Usage: yun start | yun stop | yun status')
+else console.log('Usage: yun start | yun stop | yun status | yun update')
