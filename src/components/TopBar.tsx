@@ -73,7 +73,7 @@ export default function TopBar() {
       <div className="topbar-right">
         <label className="search">
           <SearchIcon />
-          <input type="search" placeholder="Search flights, airports, aircraft" />
+          <input type="search" placeholder="Search" />
           <kbd>/</kbd>
         </label>
         <button className="icon-btn" aria-label="Sign in" title="Sign in"><UserIcon /></button>
