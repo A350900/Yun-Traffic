@@ -40,6 +40,10 @@ export class AircraftStore {
     return this.entries.size
   }
 
+  forEach(fn: (ac: AircraftTuple) => void) {
+    for (const e of this.entries.values()) fn(e.data)
+  }
+
   upsert(ac: AircraftTuple) {
     const hex = ac[0]
     // Learn type/registration/category from whichever source has them.

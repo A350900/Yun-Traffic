@@ -18,6 +18,7 @@ function sourceSummary(stats: FeedStats, now: number) {
         (os.error ? os.error : next != null ? `next snapshot in ${next}s` : 'connecting…'),
     )
   }
+  lines.push('adsb.fi (region by region, busiest first): live')
   lines.push(
     `adsb.lol (types, registrations, zoomed-in areas): ${stats.rateLimited ? 'pacing requests (rate limit)' : 'live'}`,
   )

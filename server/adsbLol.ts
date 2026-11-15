@@ -28,8 +28,11 @@ interface RawAircraft {
   seen_pos?: number
 }
 
-interface RawResponse {
-  ac: RawAircraft[]
+export interface RawResponse {
+  /** adsb.lol / readsb name */
+  ac?: RawAircraft[]
+  /** adsb.fi name for the same list */
+  aircraft?: RawAircraft[]
   now: number
 }
 
@@ -39,9 +42,9 @@ function cleanCallsign(raw?: string) {
   return cs && !/^0+$/.test(cs) ? cs : null
 }
 
-function normalize(raw: RawResponse): AircraftTuple[] {
+export function normalize(raw: RawResponse): AircraftTuple[] {
   const out: AircraftTuple[] = []
-  for (const a of raw.ac) {
+  for (const a of raw.ac ?? raw.aircraft ?? []) {
     if (a.lat == null || a.lon == null) continue
     // TIS-B / anonymised addresses start with "~"; keep them, they're real traffic.
     out.push([

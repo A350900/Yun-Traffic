@@ -6,6 +6,7 @@ import { gzipSync } from 'node:zlib'
 import { AircraftStore } from './store.ts'
 import { Scheduler } from './scheduler.ts'
 import { OpenSkyPoller } from './opensky.ts'
+import { ADSB_FI, RegionSweep } from './regionSweep.ts'
 import type { AircraftResponse } from '../shared/wire.ts'
 
 // Honour HTTPS_PROXY when one is set (e.g. in sandboxed/corporate networks).
@@ -22,6 +23,8 @@ const scheduler = new Scheduler(store)
 scheduler.start()
 const opensky = new OpenSkyPoller(store)
 opensky.start()
+const adsbFi = new RegionSweep(store, ADSB_FI)
+if (process.env.ADSBFI_DISABLED !== '1') adsbFi.start()
 
 function send(req: IncomingMessage, res: ServerResponse, status: number, body: unknown) {
   const json = Buffer.from(JSON.stringify(body))
@@ -57,7 +60,7 @@ function handleAircraft(req: IncomingMessage, res: ServerResponse, url: URL) {
     now: Date.now(),
     stats: {
       total: store.size,
-      lastFetch: scheduler.lastFetch,
+      lastFetch: Math.max(scheduler.lastFetch ?? 0, adsbFi.status.lastFetch ?? 0) || null,
       sweepSeconds: scheduler.sweepSeconds,
       rateLimited: scheduler.rateLimited,
       opensky: {
@@ -103,7 +106,13 @@ createServer((req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost')
   if (req.method === 'GET' && url.pathname === '/api/aircraft') return handleAircraft(req, res, url)
   if (req.method === 'GET' && url.pathname === '/api/health') {
-    return send(req, res, 200, { ok: true, aircraft: store.size, adsbLol: { lastFetch: scheduler.lastFetch }, opensky: opensky.status })
+    return send(req, res, 200, {
+      ok: true,
+      aircraft: store.size,
+      adsbLol: { lastFetch: scheduler.lastFetch },
+      opensky: opensky.status,
+      adsbFi: adsbFi.status,
+    })
   }
   if (url.pathname.startsWith('/api/')) return send(req, res, 404, { error: 'not found' })
   serveStatic(res, url.pathname)
