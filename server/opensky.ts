@@ -198,16 +198,33 @@ export class OpenSkyPoller {
   private async getToken(): Promise<string | null> {
     if (!this.hasCredentials) return null
     if (this.token && Date.now() < this.token.expires) return this.token.value
-    const basic = Buffer.from(`${encodeURIComponent(this.clientId!)}:${encodeURIComponent(this.clientSecret!)}`).toString('base64')
-    const res = await fetch(TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Authorization: `Basic ${basic}` },
-      body: 'grant_type=client_credentials',
-      signal: AbortSignal.timeout(20_000),
-    })
+    // OpenSky documents sending the client ID/secret in the request body;
+    // the standard alternative is HTTP Basic auth. Try the documented way first.
+    const attempt = (useBasic: boolean) =>
+      fetch(TOKEN_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          ...(useBasic
+            ? { Authorization: `Basic ${Buffer.from(`${encodeURIComponent(this.clientId!)}:${encodeURIComponent(this.clientSecret!)}`).toString('base64')}` }
+            : {}),
+        },
+        body: useBasic
+          ? 'grant_type=client_credentials'
+          : new URLSearchParams({ grant_type: 'client_credentials', client_id: this.clientId!, client_secret: this.clientSecret! }).toString(),
+        signal: AbortSignal.timeout(20_000),
+      })
+    let res = await attempt(false)
+    if (res.status === 400 || res.status === 401) {
+      await res.body?.cancel()
+      res = await attempt(true)
+    }
     if (!res.ok) {
       const text = await res.text().catch(() => '')
-      throw new Error(`OpenSky login failed (HTTP ${res.status}). Check your client ID/secret with "yun opensky". ${text.slice(0, 120)}`)
+      throw new Error(
+        `OpenSky login failed (HTTP ${res.status}). Check that you used the API client's ID and secret ` +
+          `(from credentials.json), not your website login: run "yun opensky" again. ${text.slice(0, 120)}`,
+      )
     }
     const body = (await res.json()) as { access_token: string; expires_in: number }
     // Refresh a minute early so a request never goes out with an expired token.
@@ -217,7 +234,15 @@ export class OpenSkyPoller {
 
   private async loop() {
     try {
-      const token = await this.getToken()
+      // If the login fails, keep going anonymously (fewer credits) and report it.
+      let token: string | null = null
+      let loginError: string | null = null
+      try {
+        token = await this.getToken()
+      } catch (err) {
+        loginError = (err as Error).message
+        console.warn(`[opensky] ${loginError} — continuing anonymously`)
+      }
       this.status.authenticated = Boolean(token)
       const res = await fetch(API, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -257,7 +282,7 @@ export class OpenSkyPoller {
       const count = tuples.length
       this.status.lastFetch = Date.now()
       this.status.lastCount = count
-      this.status.error = null
+      this.status.error = loginError
       const next = this.status.creditsRemaining != null ? this.paceFromCredits(this.status.creditsRemaining) : 90
       console.log(`[opensky] ${count} aircraft; ${this.status.creditsRemaining ?? '?'} credits left; next in ${Math.round(Math.max(MIN_INTERVAL_S, next))}s`)
       this.schedule(next)
