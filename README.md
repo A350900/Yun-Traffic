@@ -4,15 +4,19 @@ Live flight tracking on a 2D map: MapLibre GL + OpenFreeMap tiles, aircraft data
 
 ## Run it on your computer
 
-**Always-on (recommended).** One time per computer, after cloning:
+**The `yun` command (recommended).** One time per computer, after cloning,
+double-click `setup-windows.bat` (Windows) or `setup-mac.command` (Mac). Then, in any
+new Command Prompt / Terminal window:
 
-- **Windows:** double-click `install-autostart-windows.bat`
-- **Mac:** double-click `install-autostart-mac.command`
+```bash
+yun start     # starts in the background, then open http://localhost:5173
+yun stop      # stops it and frees its memory (~380 MB while running)
+yun status
+```
 
-From then on Yún Traffic starts invisibly whenever you log in, and
-**http://localhost:5173** just works. It also checks GitHub every minute and
-pulls new changes, which show up in the browser on their own.
-To remove it, use the matching `uninstall-autostart-…` file. Logs: `logs/autorun.log`.
+While running it pulls new commits from GitHub every minute; the page updates itself.
+If you move the folder, run setup again. `node scripts/yun.mjs remove` uninstalls the
+command. Logs: `logs/autorun.log`.
 
 **By hand:**
 

@@ -1,19 +1,19 @@
 #!/usr/bin/env node
-// Keeps Yún Traffic running in the background on your own computer.
+// The `yun` command. Run `setup-windows.bat` / `setup-mac.command` once to
+// install it, then from any terminal:
 //
-//   node scripts/autorun.mjs install    start now + start automatically at login
-//   node scripts/autorun.mjs uninstall  stop + remove the auto-start
-//   node scripts/autorun.mjs stop       stop the background copy
-//   node scripts/autorun.mjs status     is it running?
-//   node scripts/autorun.mjs run        (what auto-start calls) run in the foreground
+//   yun start    start Yún Traffic in the background (gets the latest version first)
+//   yun stop     stop it (frees all memory it was using)
+//   yun status   is it running?
 //
-// While running it checks GitHub every minute and pulls new changes. The dev
-// server hot-reloads them; if dependencies changed it reinstalls and restarts.
+// While running it checks GitHub every minute and pulls new changes, which
+// show up in the browser by themselves.
 
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, createWriteStream } from 'node:fs'
 import { homedir } from 'node:os'
+import { setTimeout as sleep } from 'node:timers/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -26,9 +26,16 @@ const IS_MAC = process.platform === 'darwin'
 const CHECK_EVERY_MS = 60_000
 const URL = 'http://localhost:5173'
 
-const WIN_STARTUP = join(process.env.APPDATA ?? '', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'YunTraffic.vbs')
-const MAC_LABEL = 'com.yuntraffic.autorun'
-const MAC_PLIST = join(homedir(), 'Library', 'LaunchAgents', `${MAC_LABEL}.plist`)
+const SCRIPT = fileURLToPath(import.meta.url)
+// Where the `yun` command goes. WindowsApps is on every Windows user's PATH.
+const WIN_CMD_DIR = join(process.env.LOCALAPPDATA ?? '', 'Microsoft', 'WindowsApps')
+const WIN_CMD = join(WIN_CMD_DIR, 'yun.cmd')
+const MAC_RC_FILES = ['.zshrc', '.bash_profile'].map((f) => join(homedir(), f))
+const RC_START = '# >>> yun-traffic >>>'
+const RC_END = '# <<< yun-traffic <<<'
+// Left over from the earlier auto-start-at-login version; removed by setup.
+const OLD_WIN_STARTUP = join(process.env.APPDATA ?? '', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'YunTraffic.vbs')
+const OLD_MAC_PLIST = join(homedir(), 'Library', 'LaunchAgents', 'com.yuntraffic.autorun.plist')
 
 mkdirSync(LOG_DIR, { recursive: true })
 
@@ -68,10 +75,7 @@ const lockHash = () => {
 // ---------------------------------------------------------------- run
 
 function run() {
-  if (runningPid()) {
-    console.log(`Already running. Open ${URL}`)
-    return
-  }
+  if (runningPid()) return
   writeFileSync(PID_FILE, String(process.pid))
   const log = createWriteStream(LOG_FILE, { flags: 'w' })
   const say = (msg) => log.write(`[${new Date().toLocaleString()}] ${msg}\n`)
@@ -148,99 +152,101 @@ function run() {
   process.on('SIGINT', shutdown)
 }
 
-// ---------------------------------------------------------------- stop / status
+// ---------------------------------------------------------------- start / stop
+
+async function start() {
+  if (runningPid()) return console.log(`Yun Traffic is already running: ${URL}`)
+  const child = spawn(process.execPath, [SCRIPT, 'run'], {
+    cwd: ROOT,
+    detached: true, // keeps running after this terminal window is closed
+    stdio: 'ignore',
+    windowsHide: true,
+  })
+  child.unref()
+
+  process.stdout.write('Starting Yun Traffic')
+  for (let i = 0; i < 240; i++) {
+    await sleep(1000)
+    try {
+      const res = await fetch(URL)
+      if (res.ok) {
+        console.log(`\nReady: ${URL}`)
+        console.log('Type "yun stop" when you are done.')
+        return
+      }
+    } catch { /* not up yet */ }
+    process.stdout.write('.')
+    if (i === 15 && !existsSync(join(ROOT, 'node_modules', '.bin'))) {
+      process.stdout.write(' (first start: installing, this takes a minute or two) ')
+    }
+  }
+  console.log(`\nStill starting. Check ${LOG_FILE} if ${URL} does not load soon.`)
+}
 
 function stop() {
   const pid = runningPid()
-  if (!pid) return console.log('Not running.')
+  if (!pid) return console.log('Yun Traffic is not running.')
   killTree(pid)
   rmSync(PID_FILE, { force: true })
   console.log('Stopped.')
 }
 
-// ---------------------------------------------------------------- install
+// ---------------------------------------------------------------- setup
 
-function startInBackground() {
-  if (runningPid()) return
-  const child = IS_WIN
-    ? spawn('wscript', [WIN_STARTUP], { detached: true, stdio: 'ignore', windowsHide: true })
-    : spawn(process.execPath, [fileURLToPath(import.meta.url), 'run'], { cwd: ROOT, detached: true, stdio: 'ignore' })
-  child.unref()
+function removeOldAutostart() {
+  if (IS_WIN) rmSync(OLD_WIN_STARTUP, { force: true })
+  if (IS_MAC && existsSync(OLD_MAC_PLIST)) {
+    sh('launchctl', ['bootout', `gui/${process.getuid()}`, OLD_MAC_PLIST])
+    rmSync(OLD_MAC_PLIST, { force: true })
+  }
 }
 
-function install() {
+function stripBlock(text) {
+  const a = text.indexOf(RC_START)
+  const b = text.indexOf(RC_END)
+  return a === -1 || b === -1 ? text : text.slice(0, a).trimEnd() + '\n' + text.slice(b + RC_END.length).replace(/^\n/, '')
+}
+
+function setup() {
+  removeOldAutostart()
   if (IS_WIN) {
-    const q = (s) => s.replaceAll('"', '""')
-    writeFileSync(
-      WIN_STARTUP,
-      [
-        'Set sh = CreateObject("WScript.Shell")',
-        `sh.CurrentDirectory = "${q(ROOT)}"`,
-        `sh.Run """${q(process.execPath)}"" ""${q(join(ROOT, 'scripts', 'autorun.mjs'))}"" run", 0, False`,
-        '',
-      ].join('\r\n'),
-    )
-    startInBackground()
-  } else if (IS_MAC) {
-    // launchd starts with a bare PATH, so pass along where node/npm/git live.
-    const path = [dirname(process.execPath), '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'].join(':')
-    mkdirSync(dirname(MAC_PLIST), { recursive: true })
-    writeFileSync(
-      MAC_PLIST,
-      `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key><string>${MAC_LABEL}</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>${process.execPath}</string>
-    <string>${join(ROOT, 'scripts', 'autorun.mjs')}</string>
-    <string>run</string>
-  </array>
-  <key>WorkingDirectory</key><string>${ROOT}</string>
-  <key>EnvironmentVariables</key><dict><key>PATH</key><string>${path}</string></dict>
-  <key>RunAtLoad</key><true/>
-  <key>StandardOutPath</key><string>${join(LOG_DIR, 'launchd.log')}</string>
-  <key>StandardErrorPath</key><string>${join(LOG_DIR, 'launchd.log')}</string>
-</dict>
-</plist>
-`,
-    )
-    const uid = process.getuid()
-    sh('launchctl', ['bootout', `gui/${uid}`, MAC_PLIST])
-    const r = sh('launchctl', ['bootstrap', `gui/${uid}`, MAC_PLIST])
-    if (r.status !== 0) {
-      console.log('launchctl said:', r.stderr.trim())
-      startInBackground()
-    }
+    mkdirSync(WIN_CMD_DIR, { recursive: true })
+    writeFileSync(WIN_CMD, `@echo off\r\n"${process.execPath}" "${SCRIPT}" %*\r\n`)
   } else {
-    console.log('Auto-start is set up for Windows and Mac only. Starting in the background now.')
-    startInBackground()
+    const block = `${RC_START}\nyun() { "${process.execPath}" "${SCRIPT}" "$@"; }\n${RC_END}\n`
+    for (const rc of MAC_RC_FILES) {
+      // Always set up zsh (the macOS default); bash only if it is in use.
+      if (!rc.endsWith('.zshrc') && !existsSync(rc)) continue
+      const old = existsSync(rc) ? readFileSync(rc, 'utf8') : ''
+      writeFileSync(rc, stripBlock(old).trimEnd() + (old.trim() ? '\n\n' : '') + block)
+    }
   }
-
-  console.log('\nInstalled. Yun Traffic now starts by itself when you log in.')
-  console.log('First start installs packages and can take a minute or two.')
-  console.log(`Then open ${URL} (bookmark it).`)
-  console.log(`If you move this folder, run the installer again.`)
+  console.log('Done! The "yun" command is installed.\n')
+  console.log(`Open a NEW ${IS_WIN ? 'Command Prompt' : 'Terminal'} window, then:`)
+  console.log('  yun start   -> then open http://localhost:5173')
+  console.log('  yun stop    -> when you are done')
+  console.log('\nIf you move this folder, run setup again from its new location.')
 }
 
-function uninstall() {
+function removeSetup() {
   stop()
-  if (IS_WIN) rmSync(WIN_STARTUP, { force: true })
-  if (IS_MAC) {
-    sh('launchctl', ['bootout', `gui/${process.getuid()}`, MAC_PLIST])
-    rmSync(MAC_PLIST, { force: true })
+  removeOldAutostart()
+  if (IS_WIN) rmSync(WIN_CMD, { force: true })
+  else {
+    for (const rc of MAC_RC_FILES) {
+      if (existsSync(rc)) writeFileSync(rc, stripBlock(readFileSync(rc, 'utf8')))
+    }
   }
-  console.log('Auto-start removed.')
+  console.log('The "yun" command was removed.')
 }
 
 // ---------------------------------------------------------------- main
 
-const cmd = process.argv[2] ?? 'run'
+const cmd = process.argv[2]
 if (cmd === 'run') run()
-else if (cmd === 'install') install()
-else if (cmd === 'uninstall') uninstall()
+else if (cmd === 'start') await start()
 else if (cmd === 'stop') stop()
-else if (cmd === 'status') console.log(runningPid() ? `Running. Open ${URL}` : 'Not running.')
-else console.log('Usage: node scripts/autorun.mjs [install|uninstall|stop|status|run]')
+else if (cmd === 'status') console.log(runningPid() ? `Running: ${URL}` : 'Not running. Type "yun start".')
+else if (cmd === 'setup') setup()
+else if (cmd === 'remove') removeSetup()
+else console.log('Usage: yun start | yun stop | yun status')
