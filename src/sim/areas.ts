@@ -13,14 +13,34 @@ const W = 360 / RES
 const H = 180 / RES
 const BLUR = 2 // cells (= 1°)
 
-function inside(ring: [number, number][], lon: number, lat: number) {
-  let c = false
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [xi, yi] = ring[i]
-    const [xj, yj] = ring[j]
-    if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) c = !c
+/**
+ * Fill the cells whose centres are inside `ring` (even-odd rule), row by row:
+ * where the outline crosses a row's latitude, cells between pairs of crossings
+ * are inside. Rings may use longitudes past ±180 (date line); those wrap.
+ */
+function fillRing(raw: Float32Array, ring: [number, number][]) {
+  const xs: number[] = []
+  const fillSpan = (a: number, b: number) => {
+    for (const shift of [-360, 0, 360]) {
+      const from = Math.max(0, Math.ceil((a + shift + 180) / RES - 0.5))
+      const to = Math.min(W - 1, Math.ceil((b + shift + 180) / RES - 0.5) - 1) // centres strictly before b
+      for (let x = from; x <= to; x++) raw[rowStart + x] = 1
+    }
   }
-  return c
+  let rowStart = 0
+  for (let y = 0; y < H; y++) {
+    const lat = 90 - (y + 0.5) * RES
+    xs.length = 0
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i]
+      const [xj, yj] = ring[j]
+      if (yi > lat !== yj > lat) xs.push(((xj - xi) * (lat - yi)) / (yj - yi) + xi)
+    }
+    if (xs.length < 2) continue
+    xs.sort((p, q) => p - q)
+    rowStart = y * W
+    for (let k = 0; k + 1 < xs.length; k += 2) fillSpan(xs[k], xs[k + 1])
+  }
 }
 
 /** 0..1 "how far inside an area" lookup, 1 = well inside, 0 = outside. */
@@ -29,18 +49,7 @@ export class AreaMask {
 
   constructor(areas: GapArea[]) {
     const raw = new Float32Array(W * H)
-    for (let y = 0; y < H; y++) {
-      const lat = 90 - (y + 0.5) * RES
-      for (let x = 0; x < W; x++) {
-        const lon = -180 + (x + 0.5) * RES
-        for (const a of areas) {
-          if (inside(a.ring, lon, lat) || inside(a.ring, lon + 360, lat) || inside(a.ring, lon - 360, lat)) {
-            raw[y * W + x] = 1
-            break
-          }
-        }
-      }
-    }
+    for (const a of areas) fillRing(raw, a.ring)
     // Soft edges: box blur (wrapping around in longitude), then shrink so the
     // fade happens just inside the outline.
     const tmp = new Float32Array(W * H)

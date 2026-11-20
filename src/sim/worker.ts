@@ -16,7 +16,7 @@ import cargo from '../../data/sim/cargo-routes.json'
 import { SimModel } from './model'
 import gapAreas from '../../data/sim/gap-areas.json'
 import { AreaMask, type GapArea } from './areas'
-import { DEFAULT_TYPE_NAMES, sizeClass } from './schedule'
+import { sizeClass } from './schedule'
 import { hash } from './random'
 import { SIM_CONFIG } from './config'
 import { cellKey } from '../../shared/sim/regions'
@@ -59,6 +59,9 @@ function fillFraction(liveCount: number, expectedCount: number) {
 }
 
 ctx.postMessage({ type: 'ready', stats: { airborne: 0, shown: 0 } } satisfies FromWorker)
+// Warm up: build the timetables around now (the slow part of the first frame)
+// straight away, while the map is still loading. Messages wait until this is done.
+for (const f of model.airborne(Date.now())) model.position(f, Date.now())
 
 function frame(id: number, t: number, view: ViewWindow | null) {
   // Where every simulated flight is now, and how many the model puts in each cell.
@@ -86,16 +89,13 @@ function frame(id: number, t: number, view: ViewWindow | null) {
       const dLon = ((p.lon - view.centerLon + 540) % 360) - 180
       if (dLon > view.halfLon || dLon < -view.halfLon || p.lat < view.south || p.lat > view.north) continue
     }
-    const r = p.route
-    const airline = model.airlines[r.airline]
+    // Only what drawing needs (keeps the frame small so it appears fast);
+    // details for a click panel can be asked for by id later.
     const type = p.flight.type
     parts.push(
-      `{"type":"Feature","geometry":{"type":"Point","coordinates":[${p.lon.toFixed(4)},${p.lat.toFixed(4)}]},` +
+      `{"type":"Feature","geometry":{"type":"Point","coordinates":[${p.lon.toFixed(3)},${p.lat.toFixed(3)}]},` +
         `"properties":{"id":"${p.flight.route}-${p.flight.dep}","rot":${Math.round(p.track)},"s":${SIZE[sizeClass(type)]},` +
-        `"v":${(p.visibility * area * SIM_CONFIG.opacity).toFixed(2)},"al":${JSON.stringify(airline?.[0] || airline?.[1] || '')},` +
-        `"an":${JSON.stringify(airline?.[2] ?? '')},"t":"${type}","tn":${JSON.stringify(model.aircraftNames[type] ?? DEFAULT_TYPE_NAMES[type] ?? type)},` +
-        `"dep":"${r.dep}","arr":"${r.arr}","alt":${p.altitudeFt},"spd":${p.speedKt},` +
-        `"d0":${p.flight.dep},"d1":${p.flight.arr}}}`,
+        `"v":${(p.visibility * area * SIM_CONFIG.opacity).toFixed(2)}}}`,
     )
   }
   const stats: SimStats = { airborne: positions.length, shown: shownWorldwide }

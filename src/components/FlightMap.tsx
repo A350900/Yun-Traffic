@@ -132,15 +132,29 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, onFeed,
     mapRef.current = map
 
     // --- Live aircraft --------------------------------------------------
+    let hadAircraft = false
     const stressCount = Number(new URLSearchParams(location.search).get('stress')) || 0
     const feed = stressCount
       ? startStressFeed(stressCount, (s) => onFeedRef.current(s))
-      : startFeed(() => focusFor(map), (s) => onFeedRef.current(s))
+      : startFeed(
+          () => focusFor(map),
+          (s) => {
+            // First aircraft in: draw them all now rather than waiting for the
+            // regular (slow, zoomed-out) refresh cycle to reach every group.
+            if (!hadAircraft && s.aircraft.size > 0) {
+              hadAircraft = true
+              refreshAll = true
+              if (map.getSource('aircraft-0')) tick()
+            }
+            onFeedRef.current(s)
+          },
+        )
 
     let renderTimer = 0
     let dayNightTimer = 0
     // Per group (see BANDS in layer.ts): when it was last sent, for which area, how many.
-    const lastDraw = new Array<number>(BANDS).fill(0)
+    // -Infinity = never drawn (performance.now() starts near 0, so 0 would read as "just drawn")
+    const lastDraw = new Array<number>(BANDS).fill(-Infinity)
     const windows = new Array<ViewWindow | null>(BANDS).fill(null)
     const sentPerBand = new Array<number>(BANDS).fill(0)
     let lastZoomBand = -1
@@ -149,7 +163,7 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, onFeed,
     // Zoomed out (thousands of aircraft) the work is split over BANDS groups;
     // zoomed in, updates are small and one group is cheaper.
     let groups = BANDS
-    let lastAnyDraw = 0
+    let lastAnyDraw = -Infinity
     const now = () => Date.now() + feed.state.clockOffset
     const totalSent = () => sentPerBand.reduce((a, b) => a + b, 0)
 
@@ -206,7 +220,7 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, onFeed,
       if (selection.getState().hex && performance.now() - lastPathDraw >= 1000) drawSelection()
       // simulated traffic: computed in a worker; held during gestures when zoomed out (like live)
       if (sim.enabled && !(map.isMoving() && !viewWindow(map))) {
-        sim.tick({ now: now(), view: viewWindow(map), interval: redrawInterval(map), force: simForce, aircraft: feed.state.aircraft.values() })
+        sim.tick({ now: now(), view: viewWindow(map), interval: redrawInterval(map), force: simForce, aircraft: feed.state.aircraft.values(), liveCount: feed.state.aircraft.size })
         simForce = false
       }
       if (refreshAll) return drawAllProgressively()

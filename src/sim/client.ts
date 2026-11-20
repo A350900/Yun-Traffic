@@ -18,8 +18,11 @@ export class SimController {
   private worker: Worker | null = null
   private map: MLMap | null = null
   private waiting = false
-  private lastFrame = 0
-  private lastLive = 0
+  // -Infinity = never (performance.now() starts near 0 at page load, so 0 would mean "just now")
+  private lastFrame = -Infinity
+  private lastLive = -Infinity
+  /** how many live aircraft the last counts were based on (-1: none sent) */
+  private liveSent = -1
   private nextId = 0
   private listeners = new Set<() => void>()
   stats: SimStats | null = null
@@ -34,7 +37,7 @@ export class SimController {
   }
 
   get enabled() {
-    return this.worker !== null
+    return this.map !== null
   }
 
   private showAreas = false
@@ -45,11 +48,9 @@ export class SimController {
     if (this.map) setAreasVisible(this.map, show)
   }
 
-  enable(map: MLMap, beforeLayer?: string) {
+  /** Start the worker early (it prepares the schedule while the map loads). */
+  preload() {
     if (this.worker) return
-    this.map = map
-    addSimLayer(map, beforeLayer)
-    setAreasVisible(map, this.showAreas)
     this.worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' })
     this.worker.onmessage = (e: MessageEvent<FromWorker>) => {
       const msg = e.data
@@ -65,8 +66,17 @@ export class SimController {
       }
       this.notify()
     }
-    this.lastFrame = 0
-    this.lastLive = 0
+  }
+
+  enable(map: MLMap, beforeLayer?: string) {
+    if (this.map) return
+    this.preload()
+    this.map = map
+    addSimLayer(map, beforeLayer)
+    setAreasVisible(map, this.showAreas)
+    this.lastFrame = -Infinity
+    this.lastLive = -Infinity
+    this.liveSent = -1
   }
 
   disable() {
@@ -83,11 +93,15 @@ export class SimController {
    * Called from the map's redraw loop. Requests a new frame when `interval`
    * has passed (or `force`), and keeps the worker's live counts current.
    */
-  tick(opts: { now: number; view: ViewWindow | null; interval: number; force?: boolean; aircraft: Iterable<AircraftTuple> }) {
-    if (!this.worker) return
+  tick(opts: { now: number; view: ViewWindow | null; interval: number; force?: boolean; aircraft: Iterable<AircraftTuple>; liveCount?: number }) {
+    if (!this.worker || !this.map) return
     const t = performance.now()
-    if (t - this.lastLive >= LIVE_EVERY_MS) {
+    // Live counts every 30 s, and straight away once the first live data is in
+    // (so simulated aircraft never double up on live ones for long).
+    const liveCount = opts.liveCount ?? 0
+    if (t - this.lastLive >= LIVE_EVERY_MS || (this.liveSent <= 0 && liveCount > 0)) {
       this.lastLive = t
+      this.liveSent = liveCount
       const cells: Record<string, number> = {}
       for (const ac of opts.aircraft) {
         if (opts.now - ac[9] > FRESH_MS) continue
@@ -95,7 +109,7 @@ export class SimController {
         cells[k] = (cells[k] ?? 0) + 1
       }
       this.post({ type: 'live', cells })
-      this.lastFrame = 0 // new live data: refresh soon
+      this.lastFrame = -Infinity // new live data: refresh now
     }
     if (this.waiting || (!opts.force && t - this.lastFrame < opts.interval)) return
     this.waiting = true

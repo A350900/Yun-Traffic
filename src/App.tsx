@@ -22,6 +22,10 @@ export default function App() {
   const [settings, setSettings] = useSettings()
   const [selection] = useState(() => new SelectionStore())
   const [sim] = useState(() => new SimController()) // simulated traffic
+  // Start preparing simulated traffic right away, in parallel with the map loading.
+  useEffect(() => {
+    if (settings.simTraffic) sim.preload()
+  }, [sim, settings.simTraffic])
   const simShown = useSyncExternalStore(sim.subscribe, () => (settings.simTraffic ? (sim.stats?.shown ?? 0) : 0))
   const [radar] = useState(
     () => new RadarController({ visible: layers.radar, style: layers.radarStyle, opacity: layers.radarOpacity }),
