@@ -44,6 +44,12 @@ export function sizeClass(type: string): SizeClass {
   return 'narrowbody'
 }
 
+/** Names for the default types used when a route lists no aircraft. */
+export const DEFAULT_TYPE_NAMES: Record<string, string> = {
+  AT76: 'ATR 72-600', E190: 'Embraer E190', CRJ9: 'Bombardier CRJ900', A320: 'Airbus A320', B738: 'Boeing 737-800',
+  B77W: 'Boeing 777-300ER', A359: 'Airbus A350-900', B789: 'Boeing 787-9', A333: 'Airbus A330-300',
+}
+
 function defaultType(km: number, rand: () => number): string {
   if (km < 350) return 'AT76'
   if (km < 900) return rand() < 0.5 ? 'E190' : 'CRJ9'

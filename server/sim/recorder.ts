@@ -21,8 +21,8 @@ const SAMPLES_PER_DAY = 288
 const KEEP_SAMPLES = 7 * SAMPLES_PER_DAY
 /** Weight of each new sample in the rolling coverage average (~7-day memory). */
 const ALPHA = 1 / KEEP_SAMPLES
-/** Only fresh positions count as "covered by receivers". */
-const FRESH_MS = 5 * 60_000
+/** Positions reported within this time count as "seen live" (OpenSky snapshots can be ~10 min apart). */
+const FRESH_MS = 20 * 60_000
 const FILE = join(import.meta.dirname, '..', '..', '.cache', 'sim', 'recorder.json')
 const SEED_FILE = join(import.meta.dirname, '..', '..', 'data', 'sim', 'coverage-seed.json')
 

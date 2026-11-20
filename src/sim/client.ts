@@ -3,13 +3,16 @@
 // as the live aircraft redraw, and puts the result on the map.
 import type { Map as MLMap } from 'maplibre-gl'
 import { cellKey } from '../../shared/sim/regions'
-import { addSimLayer, removeSimLayer, setSimData } from './layer'
+import { addSimLayer, removeSimLayer, setSimData, setAreasVisible } from './layer'
 import type { FromWorker, SimStats, ToWorker, ViewWindow } from './worker'
 import type { AircraftTuple } from '../../shared/wire'
 
 const LIVE_EVERY_MS = 30_000
-/** Only fresh live positions count as "seen live" when filling gaps. */
-const FRESH_MS = 5 * 60_000
+/**
+ * Live aircraft reported within this time count as "seen live" when filling
+ * gaps (OpenSky snapshots can be ~10 min apart without an account).
+ */
+const FRESH_MS = 20 * 60_000
 
 export class SimController {
   private worker: Worker | null = null
@@ -34,10 +37,19 @@ export class SimController {
     return this.worker !== null
   }
 
+  private showAreas = false
+
+  /** Outline the gap areas on the map (Settings: "Show simulation areas"). */
+  setShowAreas(show: boolean) {
+    this.showAreas = show
+    if (this.map) setAreasVisible(this.map, show)
+  }
+
   enable(map: MLMap, beforeLayer?: string) {
     if (this.worker) return
     this.map = map
     addSimLayer(map, beforeLayer)
+    setAreasVisible(map, this.showAreas)
     this.worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' })
     this.worker.onmessage = (e: MessageEvent<FromWorker>) => {
       const msg = e.data

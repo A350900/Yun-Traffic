@@ -1,9 +1,11 @@
 // Simulated traffic: the map layer (hollow outlines, under live aircraft).
 import type { ExpressionSpecification, GeoJSONSource, Map as MLMap } from 'maplibre-gl'
 import { ICON } from '../flights/icons'
+import gapAreas from '../../data/sim/gap-areas.json'
 
 export const SIM_SOURCE = 'sim-aircraft'
 export const SIM_LAYER = 'sim-icons'
+const AREAS = 'sim-areas'
 
 // Same zoom scaling as live aircraft (src/flights/layer.ts).
 const iconSize = [
@@ -16,6 +18,32 @@ const iconSize = [
 
 export function addSimLayer(map: MLMap, beforeId?: string) {
   if (map.getSource(SIM_SOURCE)) return
+  // The gap areas, outlined (hidden unless "Show simulation areas" is on).
+  map.addSource(AREAS, {
+    type: 'geojson',
+    data: {
+      type: 'FeatureCollection',
+      features: gapAreas.areas.map((a) => ({
+        type: 'Feature' as const,
+        properties: { name: a.name },
+        geometry: { type: 'Polygon' as const, coordinates: [[...a.ring, a.ring[0]]] },
+      })),
+    },
+  })
+  map.addLayer(
+    { id: `${AREAS}-fill`, type: 'fill', source: AREAS, layout: { visibility: 'none' }, paint: { 'fill-color': '#f2c6d2', 'fill-opacity': 0.06 } },
+    beforeId,
+  )
+  map.addLayer(
+    {
+      id: `${AREAS}-line`,
+      type: 'line',
+      source: AREAS,
+      layout: { visibility: 'none' },
+      paint: { 'line-color': '#f2c6d2', 'line-opacity': 0.55, 'line-width': 1.2, 'line-dasharray': [3, 2] },
+    },
+    beforeId,
+  )
   map.addSource(SIM_SOURCE, { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, tolerance: 0, buffer: 32, maxzoom: 10 })
   map.addLayer(
     {
@@ -38,8 +66,12 @@ export function addSimLayer(map: MLMap, beforeId?: string) {
 }
 
 export function removeSimLayer(map: MLMap) {
-  if (map.getLayer(SIM_LAYER)) map.removeLayer(SIM_LAYER)
-  if (map.getSource(SIM_SOURCE)) map.removeSource(SIM_SOURCE)
+  for (const id of [SIM_LAYER, `${AREAS}-fill`, `${AREAS}-line`]) if (map.getLayer(id)) map.removeLayer(id)
+  for (const id of [SIM_SOURCE, AREAS]) if (map.getSource(id)) map.removeSource(id)
+}
+
+export function setAreasVisible(map: MLMap, visible: boolean) {
+  for (const id of [`${AREAS}-fill`, `${AREAS}-line`]) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
 }
 
 let lastUrl: string | null = null

@@ -52,7 +52,7 @@ export default function App() {
 
   return (
     <main className="app">
-      <FlightMap onSelect={setSelected} onFeed={onFeed} dayNight={layers.dayNight} radar={radar} selection={selection} sim={sim} simEnabled={settings.simTraffic} />
+      <FlightMap onSelect={setSelected} onFeed={onFeed} dayNight={layers.dayNight} radar={radar} selection={selection} sim={sim} simEnabled={settings.simTraffic} simShowAreas={settings.simShowAreas} />
       <TopBar />
       {selected && (
         <FlightPanel

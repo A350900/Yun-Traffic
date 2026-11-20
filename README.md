@@ -92,6 +92,13 @@ phases; code in `server/sim/`, `shared/sim/`, `scripts/sim/` and data in
   daily flights and the global airborne peak (`data/sim/calibration.json`).
   Simulated aircraft are hidden within 40 nm of airports and fade in until 100 nm.
   Tests: `npm run test:sim`.
+- **Phase 2 (done, beta, off by default):** Settings → *Simulated traffic → Fill
+  coverage gaps*. Runs in a Web Worker (`src/sim/worker.ts`). Simulated aircraft
+  appear **only inside the gap areas** in `data/sim/gap-areas.json` (oceans,
+  China/Mongolia/Russia/Central Asia, Iran–Pakistan, Africa, …; *Show simulation
+  areas* outlines them). Inside, each 2° cell shows only the difference between
+  the model's traffic and the live aircraft already there. Drawn as hollow
+  outlines under live aircraft (`src/sim/layer.ts`).
 
 ### Weather radar
 

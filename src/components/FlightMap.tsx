@@ -69,6 +69,7 @@ interface Props {
   /** simulated traffic */
   sim: SimController
   simEnabled: boolean
+  simShowAreas: boolean
 }
 
 /** Rough radius of the visible area in nautical miles. */
@@ -80,7 +81,7 @@ function focusFor(map: MLMap): FocusHint | null {
   return { lat: c.lat, lon: c.lng, radiusNm: Math.max(radiusNm, 25) }
 }
 
-function FlightMap({ onSelect, onFeed, dayNight, radar, selection, sim, simEnabled }: Props) {
+function FlightMap({ onSelect, onFeed, dayNight, radar, selection, sim, simEnabled, simShowAreas }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
   const onSelectRef = useRef(onSelect)
@@ -280,6 +281,7 @@ function FlightMap({ onSelect, onFeed, dayNight, radar, selection, sim, simEnabl
     if (simEnabled) sim.enable(map, ICON_LAYERS[0])
     else sim.disable()
   }, [simEnabled, sim])
+  useEffect(() => sim.setShowAreas(simShowAreas), [simShowAreas, sim])
 
   const locate = () => {
     const map = mapRef.current
