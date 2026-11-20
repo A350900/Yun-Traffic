@@ -3,8 +3,8 @@ import majorAirports from '../../data/major-airports.json'
 
 /**
  * Pins for the world's 100 busiest airports (data/major-airports.json), drawn
- * above the aircraft. Hidden when zoomed all the way out, fading in from zoom
- * ~2.2; the IATA code appears beside the pin once zoomed in a little more.
+ * above the aircraft. Visible at the default zoom (2.2) and slightly further
+ * out, fading in from zoom 1.7; the IATA code appears beside the pin once zoomed in a little more.
  * Where pins would overlap, the busier airport wins. Clicking one opens its card.
  */
 
@@ -93,17 +93,18 @@ export function addAirportLayer(map: MLMap, beforeLayer?: string) {
   if (!map.hasImage(ICON)) map.addImage(ICON, drawPin(), { pixelRatio: PX })
   if (!map.getSource(SOURCE)) map.addSource(SOURCE, { type: 'geojson', data: geojson() })
   if (map.getLayer(AIRPORT_LAYER)) return
-  const fadeIn = ['interpolate', ['linear'], ['zoom'], 2.2, 0, 2.7, 1] as unknown as ExpressionSpecification
+  // Visible at the default zoom (2.2) and a little further out; gone below 1.7.
+  const fadeIn = ['interpolate', ['linear'], ['zoom'], 1.7, 0, 2, 1] as unknown as ExpressionSpecification
   map.addLayer(
     {
       id: AIRPORT_LAYER,
       type: 'symbol',
       source: SOURCE,
-      minzoom: 2.2,
+      minzoom: 1.7,
       layout: {
         'icon-image': ICON,
         'icon-anchor': 'bottom',
-        'icon-size': ['interpolate', ['linear'], ['zoom'], 2.2, 0.5, 4, 0.65, 6, 0.8, 9, 0.95] as unknown as ExpressionSpecification,
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 1.7, 0.45, 2.2, 0.5, 4, 0.65, 6, 0.8, 9, 0.95] as unknown as ExpressionSpecification,
         'icon-allow-overlap': false, // overlapping pins: the busier airport is shown
         'icon-ignore-placement': true, // ...without hiding the map's own labels
         'symbol-sort-key': ['get', 'rank'],

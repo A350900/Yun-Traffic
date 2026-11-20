@@ -109,7 +109,7 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, onFeed, dayNight,
     const map = new MLMap({
       container: containerRef.current,
       style: theme.mapStyle,
-      center: [-30, 35],
+      center: [-150, 40], // North Pacific: Asia on the left, the Americas on the right
       zoom: 2.2,
       // Keep the view in the URL (#zoom/lat/lon) so it can be shared/bookmarked.
       hash: true,
