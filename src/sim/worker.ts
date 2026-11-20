@@ -12,6 +12,7 @@ import routes from '../../data/sim/routes.json'
 import airports from '../../data/airports.json'
 import trafficModel from '../../data/sim/traffic-model.json'
 import calibration from '../../data/sim/calibration.json'
+import cargo from '../../data/sim/cargo-routes.json'
 import { SimModel } from './model'
 import gapAreas from '../../data/sim/gap-areas.json'
 import { AreaMask, type GapArea } from './areas'
@@ -45,7 +46,7 @@ export type FromWorker =
   | { type: 'error'; message: string }
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope
-const model = new SimModel({ routes, airports, model: trafficModel, calibration } as unknown as SimData)
+const model = new SimModel({ routes, airports, model: trafficModel, calibration, cargo } as unknown as SimData)
 const SIZE = { turboprop: 0.75, regional: 0.82, narrowbody: 0.92, widebody: 1.15 } as const
 
 const mask = new AreaMask(gapAreas.areas as GapArea[])

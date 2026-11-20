@@ -12,14 +12,14 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { SimModel } from '../../src/sim/model.ts'
 import { SIM_CONFIG } from '../../src/sim/config.ts'
-import { corridorOf } from '../../src/sim/schedule.ts'
+import { corridorOf, countryPair } from '../../src/sim/schedule.ts'
 import { regionOf } from '../../shared/sim/regions.ts'
 import type { Calibration, SimData } from '../../src/sim/types.ts'
 
 const ROOT = join(import.meta.dirname, '..', '..')
 const read = (p: string) => JSON.parse(readFileSync(join(ROOT, p), 'utf8'))
 const CAL_FILE = join(ROOT, 'data', 'sim', 'calibration.json')
-const base: SimData = { routes: read('data/sim/routes.json'), airports: read('data/airports.json'), model: read('data/sim/traffic-model.json') }
+const base: SimData = { routes: read('data/sim/routes.json'), airports: read('data/airports.json'), model: read('data/sim/traffic-model.json'), cargo: read('data/sim/cargo-routes.json') }
 const PEAK = Date.UTC(2024, 6, 11, 14, 22)
 const AVG_DAY = '2024-05-15' // mid-season weekday: monthly/weekday factors close to 1
 const targets = base.model.regionalDailyFlights
@@ -35,6 +35,17 @@ function departuresByCountry(m: SimModel, key: string) {
 }
 
 const corridors = Object.entries(base.model.corridorDailyFlights ?? {}).filter(([k]) => !k.startsWith('_')) as [string, { flights: number }][]
+const pairTargets = Object.entries(base.model.pairDailyFlights ?? {}).filter(([k]) => !k.startsWith('_')) as [string, { flights: number }][]
+function flightsByPair(m: SimModel, key: string) {
+  const by: Record<string, number> = {}
+  for (const f of m.day(key)) {
+    const r = m.routes[f.route]
+    if (r.key.startsWith('c')) continue // freighters aren't in the passenger targets
+    const k = countryPair(base.airports[r.dep][3], base.airports[r.arr][3])
+    by[k] = (by[k] ?? 0) + 1
+  }
+  return by
+}
 function flightsByCorridor(m: SimModel, key: string) {
   const by: Record<string, number> = {}
   for (const f of m.day(key)) {
@@ -49,7 +60,7 @@ function flightsByCorridor(m: SimModel, key: string) {
 
 /** Regional shares + global peak, for a given distance setting. */
 function calibrate(distanceSoftenKm: number, log = false): Calibration {
-  const cal: Calibration = { scale: SIM_CONFIG.defaultScale, distanceSoftenKm, countryMultipliers: {}, corridorMultipliers: {} }
+  const cal: Calibration = { scale: SIM_CONFIG.defaultScale, distanceSoftenKm, countryMultipliers: {}, corridorMultipliers: {}, pairMultipliers: {} }
   for (let pass = 1; pass <= 6; pass++) {
     const m = new SimModel({ ...base, calibration: cal })
     const by = departuresByCountry(m, AVG_DAY)
@@ -68,6 +79,13 @@ function calibrate(distanceSoftenKm: number, log = false): Calibration {
       const want = (t.flights / world) * total
       if (have > 0) cal.corridorMultipliers![name] = +((cal.corridorMultipliers![name] ?? 1) * (want / have)).toFixed(4)
       if (log && pass === 6) console.log(`  ${name}: ${have} -> want ${Math.round(want)}`)
+    }
+    const byPair = flightsByPair(new SimModel({ ...base, calibration: cal }), AVG_DAY)
+    for (const [name, t] of pairTargets) {
+      const have = byPair[name] ?? 0
+      const want = (t.flights / world) * total
+      if (have > 0) cal.pairMultipliers![name] = +((cal.pairMultipliers![name] ?? 1) * (want / have)).toFixed(4)
+      else if (log && pass === 6) console.log(`  ${name}: no routes in the data`)
     }
     const n = new SimModel({ ...base, calibration: cal }).countAirborne(PEAK)
     cal.scale = +(cal.scale * (base.model.globalAirborne.julyPeak.value / n)).toPrecision(5)
@@ -111,6 +129,8 @@ console.log(`  min ${Math.min(...nov)} at ${nov.indexOf(Math.min(...nov))}:30 UT
 const avg = departuresByCountry(m, AVG_DAY)
 const avgTotal = Object.values(avg).reduce((a, b) => a + b, 0)
 console.log(`\nflights on an average day (${AVG_DAY}): ${avgTotal.toLocaleString()}  (IATA: ~${world.toLocaleString()})`)
+const avgPair = flightsByPair(m, AVG_DAY)
+console.log('  pairs: ' + pairTargets.map(([k, t]) => `${k} ${avgPair[k] ?? 0}/${t.flights}`).join(', '))
 const avgCorr = flightsByCorridor(m, AVG_DAY)
 for (const [name, t] of corridors) console.log(`  ${name}: ${avgCorr[name] ?? 0}  (target ${t.flights})`)
 for (const [name, t] of Object.entries(targets)) {

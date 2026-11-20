@@ -192,7 +192,7 @@
     ],
     "longHaulFromKm": 4500,
     "banks": {
-      "_note": "Typical long-haul timing by direction (local departure hours). Overrides 'longHaul' for these flows. Estimates based on well-known airline scheduling patterns.",
+      "_note": "Typical long-haul timing by direction (local departure hours). Overrides 'longHaul' for these flows. Windows are [from, to] or [from, to, weight] (weight 1 if left out; hours past 24 wrap to the next morning); 'floor' is the weight of every other hour (default 0.05; higher where freighters and scattered flights run around the clock). Estimates based on well-known airline scheduling patterns.",
       "europeToNorthAmerica": {
         "hours": [
           9,
@@ -209,17 +209,40 @@
       },
       "asiaToNorthAmerica": {
         "hours": [
-          15,
-          23
+          [
+            15,
+            24,
+            1
+          ],
+          [
+            10,
+            15,
+            0.5
+          ],
+          [
+            24,
+            26,
+            0.4
+          ]
         ],
-        "basis": "evening departures across the Pacific"
+        "floor": 0.15,
+        "basis": "evening departures from Japan/Korea/Taiwan/China, daytime departures from Seoul/Shanghai/Hong Kong, a few after midnight; freighters at all hours"
       },
       "northAmericaToAsia": {
         "hours": [
-          10,
-          17
+          [
+            10,
+            15,
+            1
+          ],
+          [
+            22,
+            26,
+            0.6
+          ]
         ],
-        "basis": "midday departures across the Pacific"
+        "floor": 0.2,
+        "basis": "midday departures (US airlines, ANA/JAL) plus the late-night wave of Asian carriers from LAX/SFO/YVR (~22:00-01:30); freighters at all hours"
       },
       "gulfHubs": {
         "airports": [
@@ -341,14 +364,77 @@
     }
   },
   "corridorDailyFlights": {
-    "_note": "Average daily flights (both directions) on long ocean corridors. The calibration scales the routes in each corridor so its share of global flights matches. Corridors: see corridorOf() in src/sim/schedule.ts.",
+    "_note": "Average daily flights (both directions) on long ocean corridors. The calibration scales the routes in each corridor so its share of global flights matches. Corridors: see corridorOf() in src/sim/schedule.ts. (The Pacific is set by country pair below, plus freighters in cargo-routes.json.)",
     "europeNorthAmerica": {
       "flights": 1590,
       "basis": "source: 580,487 flights between Europe and North America in 2023 (ForeFlight, 'Transatlantic Flight Operations'), /365"
     },
-    "transpacific": {
-      "flights": 770,
-      "basis": "estimate: ~640 passenger flights/day between the Americas and Asia/Oceania (route network) plus ~130 cargo flights/day (Anchorage handles most Asia-North America freighters; the passenger-only route data has none, so passenger routes stand in for them)"
+    "hawaiiMainland": {
+      "flights": 300,
+      "basis": "source: Hawaii Tourism Authority air service grid, July 2024 schedules: 4,382 (US West) + 389 (US East) flights/month into Hawaii, x2 directions /31 = ~308; rounded down for the yearly average"
+    }
+  },
+  "pairDailyFlights": {
+    "_note": "Average daily passenger flights (both directions) between two countries, for pairs where the 2014 route data is far from today (e.g. China-US flights were cut sharply after 2020). Keys are ISO country codes in alphabetical order. Estimates from 2024-25 airline schedules (rounded); edit freely, then run npm run sim:calibrate.",
+    "JP-US": {
+      "flights": 160,
+      "basis": "estimate: US mainland-Japan ~112 (United, Delta, American, ANA, JAL, ZIPAIR) + Hawaii-Japan ~48"
+    },
+    "CN-US": {
+      "flights": 24,
+      "basis": "estimate: ~85 round trips/week under the 2024-25 US-China caps"
+    },
+    "KR-US": {
+      "flights": 60,
+      "basis": "estimate: Korean Air, Asiana, Delta, United, Air Premia"
+    },
+    "TW-US": {
+      "flights": 60,
+      "basis": "estimate: EVA Air, China Airlines, Starlux, United, Delta"
+    },
+    "HK-US": {
+      "flights": 30,
+      "basis": "estimate: Cathay Pacific, United"
+    },
+    "PH-US": {
+      "flights": 16,
+      "basis": "estimate: Philippine Airlines, United"
+    },
+    "AU-US": {
+      "flights": 40,
+      "basis": "estimate: Qantas, United, American, Delta"
+    },
+    "NZ-US": {
+      "flights": 14,
+      "basis": "estimate: Air New Zealand, United, American, Delta"
+    },
+    "SG-US": {
+      "flights": 8,
+      "basis": "estimate: Singapore Airlines, United"
+    },
+    "VN-US": {
+      "flights": 4,
+      "basis": "estimate: Vietnam Airlines"
+    },
+    "CA-JP": {
+      "flights": 14,
+      "basis": "estimate: Air Canada, ANA, JAL"
+    },
+    "CA-KR": {
+      "flights": 8,
+      "basis": "estimate: Air Canada, Korean Air"
+    },
+    "CA-CN": {
+      "flights": 8,
+      "basis": "estimate: Air China, China Eastern, China Southern, Air Canada"
+    },
+    "CA-HK": {
+      "flights": 6,
+      "basis": "estimate: Cathay Pacific, Air Canada"
+    },
+    "CA-TW": {
+      "flights": 6,
+      "basis": "estimate: EVA Air, China Airlines, Air Canada"
     }
   }
 }

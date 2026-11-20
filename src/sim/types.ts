@@ -17,13 +17,14 @@ export interface TrafficModel {
   globalAirborne: { julyPeak: { value: number }; novemberTrough: { value: number } }
   regionalDailyFlights: Record<string, { countries?: string[]; flights: number }>
   corridorDailyFlights?: Record<string, { flights: number } | string>
+  pairDailyFlights?: Record<string, { flights: number } | string>
   monthly: Record<string, { factors: number[] }>
   weekday: { factors: Record<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun', number> }
   departureProfiles: {
     shortHaul: number[]
     longHaul: number[]
     longHaulFromKm: number
-    banks: Record<string, { hours: number[] | number[][]; airports?: string[] }>
+    banks: Record<string, { hours: number[] | number[][]; floor?: number; airports?: string[] }>
   }
 }
 
@@ -36,6 +37,16 @@ export interface Calibration {
   countryMultipliers: Record<string, number>
   /** ocean corridor (see corridorOf in schedule.ts) -> multiplier */
   corridorMultipliers?: Record<string, number>
+  /** country pair ("CN-US", alphabetical) -> multiplier */
+  pairMultipliers?: Record<string, number>
+}
+
+/** Freighter routes (data/sim/cargo-routes.json): flown both ways, `daily` flights each way. */
+export interface CargoFile {
+  airlines: [string, string, string, string][]
+  aircraft: Record<string, string>
+  /** [airline ICAO, airport ICAO, airport ICAO, "ICAO type codes", daily flights each way] */
+  routes: [string, string, string, string, number][]
 }
 
 export interface SimData {
@@ -43,4 +54,5 @@ export interface SimData {
   airports: Airports
   model: TrafficModel
   calibration?: Calibration
+  cargo?: CargoFile
 }

@@ -37,14 +37,13 @@ export class SimModel {
   constructor(data: SimData) {
     this.data = data
     this.routes = prepareRoutes(data)
+    this.airlines = [...data.routes.airlines, ...(data.cargo?.airlines ?? [])]
+    this.aircraftNames = { ...data.routes.aircraft, ...data.cargo?.aircraft }
   }
 
-  get airlines() {
-    return this.data.routes.airlines
-  }
-  get aircraftNames() {
-    return this.data.routes.aircraft
-  }
+  /** passenger airlines, then freighter airlines (PreparedRoute.airline indexes this) */
+  readonly airlines: [string, string, string, string][]
+  readonly aircraftNames: Record<string, string>
 
   /** Timetable for a local date (cached). */
   day(key: string): SimFlight[] {

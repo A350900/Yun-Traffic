@@ -34,11 +34,17 @@ export function seasonGroup(country: string, lat: number, lon: number): string {
 
 const isAsia = (lat: number, lon: number) => lon > 60 && lat > -11
 
+/** Key for a pair of countries, alphabetical ("CN-US"). */
+export const countryPair = (a: string, b: string) => (a < b ? `${a}-${b}` : `${b}-${a}`)
+
 /** Long ocean corridor a route belongs to (keys of traffic-model.json "corridorDailyFlights"), if any. */
 export function corridorOf(a: { country: string; lat: number; lon: number }, b: { country: string; lat: number; lon: number }): string | null {
   const gA = seasonGroup(a.country, a.lat, a.lon)
   const gB = seasonGroup(b.country, b.lat, b.lon)
   if ((gA === 'europe' && gB === 'northAmerica') || (gA === 'northAmerica' && gB === 'europe')) return 'europeNorthAmerica'
+  const hawaii = (p: { country: string; lat: number; lon: number }) => p.country === 'US' && p.lon < -150 && p.lat < 25
+  const mainland = (p: { lat: number; lon: number }) => p.lon > -130 && p.lon < -60 && p.lat > 15
+  if ((hawaii(a) && mainland(b)) || (hawaii(b) && mainland(a))) return 'hawaiiMainland'
   // the Americas <-> Asia/Oceania (lon > 100: east Asia, Southeast Asia, Australia, NZ)
   if ((a.lon < -30 && b.lon > 100) || (b.lon < -30 && a.lon > 100)) return 'transpacific'
   return null
@@ -69,6 +75,9 @@ function defaultType(km: number, rand: () => number): string {
 
 // ---------------------------------------------------------------- prepared routes
 
+/** Freighters depart around the clock (hub waves differ by airline; on average it's flat). */
+const CARGO_PROFILE: number[] = Array(24).fill(1)
+
 export interface PreparedRoute {
   /** stable key for this route direction (seeds its daily random draw) */
   key: string
@@ -89,11 +98,11 @@ export interface PreparedRoute {
   depTz: string
 }
 
-/** Turn a bank window list ([[a,b], ...] or [a,b]) into 24 hourly weights. */
-function bankProfile(hours: number[] | number[][]): number[] {
-  const windows = (Array.isArray(hours[0]) ? hours : [hours]) as number[][]
-  const w = Array(24).fill(0.05)
-  for (const [a, b] of windows) for (let h = a; h < b; h++) w[h % 24] = 1
+/** Turn a bank ([[from, to, weight?], ...] or [from, to], local hours) into 24 hourly weights. */
+function bankProfile(bank: { hours: number[] | number[][]; floor?: number }): number[] {
+  const windows = (Array.isArray(bank.hours[0]) ? bank.hours : [bank.hours]) as number[][]
+  const w = Array(24).fill(bank.floor ?? 0.05)
+  for (const [a, b, weight = 1] of windows) for (let h = a; h < b; h++) w[h % 24] = Math.max(w[h % 24], weight)
   return w
 }
 
@@ -122,41 +131,27 @@ export function prepareRoutes(data: SimData): PreparedRoute[] {
   })
 
   const out: PreparedRoute[] = []
-  for (const pair of pairs.values()) {
-    const a = airports[pair.dep]
-    const b = airports[pair.arr]
-    if (!a || !b) continue
-    const km = distanceKm(a[4], a[5], b[4], b[5])
-    if (km < SIM_CONFIG.minRouteKm) continue
-    const size = ((degree.get(pair.dep) ?? 1) * (degree.get(pair.arr) ?? 1)) ** SIM_CONFIG.sizeExponent
-    // Regional calibration: both ends count equally (geometric mean), so a route has the
-    // same frequency in both directions.
-    const regional = Math.sqrt(mult(a[3]) * mult(b[3]))
-    const corridor = corridorOf({ country: a[3], lat: a[4], lon: a[5] }, { country: b[3], lat: b[4], lon: b[5] })
-    const corridorMult = corridor ? (data.calibration?.corridorMultipliers?.[corridor] ?? 1) : 1
-    const cap = km >= prof.longHaulFromKm ? SIM_CONFIG.maxDailyLongHaul : SIM_CONFIG.maxDailyPerRoute
-    const baseDaily = Math.min(cap, (scale * regional * corridorMult * size) / (1 + km / soften))
-    const types = [...pair.types]
+  const pushBothWays = (key: string | number, airline: number, dep0: string, arr0: string, km: number, types: string[], baseDaily: number, fixedProfile: number[] | null) => {
     for (const [dep, arr, A, B, dir] of [
-      [pair.dep, pair.arr, a, b, ''],
-      [pair.arr, pair.dep, b, a, 'r'],
+      [dep0, arr0, airports[dep0], airports[arr0], ''],
+      [arr0, dep0, airports[arr0], airports[dep0], 'r'],
     ] as const) {
       const gA = seasonGroup(A[3], A[4], A[5])
       const gB = seasonGroup(B[3], B[4], B[5])
       // Departure-time pattern.
-      let profile = km >= prof.longHaulFromKm ? prof.longHaul : prof.shortHaul
-      if (km >= prof.longHaulFromKm) {
+      let profile = fixedProfile ?? (km >= prof.longHaulFromKm ? prof.longHaul : prof.shortHaul)
+      if (!fixedProfile && km >= prof.longHaulFromKm) {
         const banks = prof.banks
-        if (gulf.has(dep) && banks.gulfHubs) profile = bankProfile(banks.gulfHubs.hours)
-        else if (gA === 'europe' && gB === 'northAmerica' && banks.europeToNorthAmerica) profile = bankProfile(banks.europeToNorthAmerica.hours)
-        else if (gA === 'northAmerica' && gB === 'europe' && banks.northAmericaToEurope) profile = bankProfile(banks.northAmericaToEurope.hours)
-        else if (isAsia(A[4], A[5]) && gB === 'northAmerica' && banks.asiaToNorthAmerica) profile = bankProfile(banks.asiaToNorthAmerica.hours)
-        else if (gA === 'northAmerica' && isAsia(B[4], B[5]) && banks.northAmericaToAsia) profile = bankProfile(banks.northAmericaToAsia.hours)
-        else if (isAsia(A[4], A[5]) && gB === 'europe' && banks.asiaToEurope) profile = bankProfile(banks.asiaToEurope.hours)
+        if (gulf.has(dep) && banks.gulfHubs) profile = bankProfile(banks.gulfHubs)
+        else if (gA === 'europe' && gB === 'northAmerica' && banks.europeToNorthAmerica) profile = bankProfile(banks.europeToNorthAmerica)
+        else if (gA === 'northAmerica' && gB === 'europe' && banks.northAmericaToEurope) profile = bankProfile(banks.northAmericaToEurope)
+        else if (isAsia(A[4], A[5]) && gB === 'northAmerica' && banks.asiaToNorthAmerica) profile = bankProfile(banks.asiaToNorthAmerica)
+        else if (gA === 'northAmerica' && isAsia(B[4], B[5]) && banks.northAmericaToAsia) profile = bankProfile(banks.northAmericaToAsia)
+        else if (isAsia(A[4], A[5]) && gB === 'europe' && banks.asiaToEurope) profile = bankProfile(banks.asiaToEurope)
       }
       out.push({
-        key: `${pair.index}${dir}`,
-        airline: pair.airline,
+        key: `${key}${dir}`,
+        airline,
         dep,
         arr,
         depLat: A[4],
@@ -171,6 +166,36 @@ export function prepareRoutes(data: SimData): PreparedRoute[] {
         depTz: A[6],
       })
     }
+  }
+  for (const pair of pairs.values()) {
+    const a = airports[pair.dep]
+    const b = airports[pair.arr]
+    if (!a || !b) continue
+    const km = distanceKm(a[4], a[5], b[4], b[5])
+    if (km < SIM_CONFIG.minRouteKm) continue
+    const size = ((degree.get(pair.dep) ?? 1) * (degree.get(pair.arr) ?? 1)) ** SIM_CONFIG.sizeExponent
+    // Regional calibration: both ends count equally (geometric mean), so a route has the
+    // same frequency in both directions.
+    const regional = Math.sqrt(mult(a[3]) * mult(b[3]))
+    const corridor = corridorOf({ country: a[3], lat: a[4], lon: a[5] }, { country: b[3], lat: b[4], lon: b[5] })
+    const corridorMult = corridor ? (data.calibration?.corridorMultipliers?.[corridor] ?? 1) : 1
+    const pairMult = data.calibration?.pairMultipliers?.[countryPair(a[3], b[3])] ?? 1
+    const cap = km >= prof.longHaulFromKm ? SIM_CONFIG.maxDailyLongHaul : SIM_CONFIG.maxDailyPerRoute
+    const baseDaily = Math.min(cap, (scale * regional * corridorMult * pairMult * size) / (1 + km / soften))
+    pushBothWays(pair.index, pair.airline, pair.dep, pair.arr, km, [...pair.types], baseDaily, null)
+  }
+
+  // Freighters: fixed frequencies (not calibrated), departing at any hour.
+  const cargo = data.cargo
+  if (cargo) {
+    const airlineBase = routes.airlines.length
+    const airlineIndex = new Map(cargo.airlines.map((al, i) => [al[0], airlineBase + i]))
+    cargo.routes.forEach(([al, dep, arr, types, daily], i) => {
+      const a = airports[dep]
+      const b = airports[arr]
+      if (!a || !b) return
+      pushBothWays(`c${i}`, airlineIndex.get(al) ?? 0, dep, arr, distanceKm(a[4], a[5], b[4], b[5]), types.split(' '), daily, CARGO_PROFILE)
+    })
   }
   return out
 }
