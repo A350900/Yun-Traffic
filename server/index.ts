@@ -9,6 +9,7 @@ import { OpenSkyPoller } from './opensky.ts'
 import { AIRPLANES_LIVE, RegionSweep } from './regionSweep.ts'
 import { flightInfo, flightPhoto, flightTrace, onTraceRequest } from './flightInfo.ts'
 import type { FlightTrace } from '../shared/wire.ts'
+import { airportPhoto } from './airportPhoto.ts'
 import { SimRecorder } from './sim/recorder.ts' // simulated traffic
 import type { AircraftResponse } from '../shared/wire.ts'
 
@@ -177,6 +178,11 @@ createServer((req, res) => {
       (body) => send(req, res, 200, body),
       (err) => send(req, res, 502, { error: (err as Error).message }),
     )
+    return
+  }
+  const ap = url.pathname.match(/^\/api\/airport-photo\/([A-Z0-9]{4})$/i)
+  if (req.method === 'GET' && ap) {
+    airportPhoto(ap[1].toUpperCase()).then((photo) => send(req, res, 200, photo))
     return
   }
   // simulated traffic: coverage map and recorded totals

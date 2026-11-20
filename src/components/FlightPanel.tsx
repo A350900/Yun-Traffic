@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { F, type AircraftTuple, type AirportInfo } from '../../shared/wire'
 import type { SelectionStore } from '../flights/selection'
+import { zoneLabel } from '../flights/zone'
 import { distanceKm } from '../flights/geo'
 import { ESTIMATED_AFTER_MS, extrapolate } from '../flights/position'
 import { ALTITUDE_STOPS } from '../flights/pathLayer'
@@ -25,24 +26,6 @@ function age(ms: number) {
 function hm(ms: number) {
   const m = Math.max(0, Math.round(ms / 60_000))
   return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`
-}
-
-/** "EST · UTC−05:00" (or just "UTC+09:00" where there's no common abbreviation) */
-function zoneLabel(tz: string | null, now: number) {
-  if (!tz) return ''
-  try {
-    const d = new Date(now)
-    const short = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' })
-      .formatToParts(d)
-      .find((p) => p.type === 'timeZoneName')?.value
-    const long = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' })
-      .formatToParts(d)
-      .find((p) => p.type === 'timeZoneName')?.value
-    const offset = (long === 'GMT' ? 'UTC+00:00' : long?.replace('GMT', 'UTC'))?.replace('-', '−')
-    return short && !short.startsWith('GMT') && !short.startsWith('UTC') ? `${short} · ${offset}` : offset ?? ''
-  } catch {
-    return ''
-  }
 }
 
 function AirportSide({ a, now, align }: { a: AirportInfo | null; now: number; align: 'left' | 'right' }) {

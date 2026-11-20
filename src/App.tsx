@@ -3,6 +3,7 @@ import FlightMap from './components/FlightMap'
 import TopBar from './components/TopBar'
 import BottomDock from './components/BottomDock'
 import FlightPanel from './components/FlightPanel'
+import AirportPanel from './components/AirportPanel'
 import FeedStatus from './components/FeedStatus'
 import type { FeedState } from './flights/feed'
 import { useLayerSettings } from './state/layers'
@@ -16,6 +17,7 @@ const synthetic = new URLSearchParams(location.search).has('stress')
 
 export default function App() {
   const [selected, setSelected] = useState<string | null>(null)
+  const [selectedAirport, setSelectedAirport] = useState<string | null>(null)
   const [layers, setLayers] = useLayerSettings()
   const [settings, setSettings] = useSettings()
   const [selection] = useState(() => new SelectionStore())
@@ -54,8 +56,21 @@ export default function App() {
 
   return (
     <main className="app">
-      <FlightMap onSelect={setSelected} onFeed={onFeed} dayNight={layers.dayNight} radar={radar} selection={selection} sim={sim} simEnabled={settings.simTraffic} simShowAreas={settings.simShowAreas} />
+      <FlightMap
+        onSelect={(hex) => {
+          // an aircraft, or empty map (closes the airport card too)
+          setSelected(hex)
+          setSelectedAirport(null)
+        }}
+        onSelectAirport={(icao) => {
+          setSelectedAirport(icao)
+          setSelected(null)
+        }}
+        firBoundaries={layers.firBoundaries}
+        onFeed={onFeed}
+        dayNight={layers.dayNight} radar={radar} selection={selection} sim={sim} simEnabled={settings.simTraffic} simShowAreas={settings.simShowAreas} />
       <TopBar />
+      {selectedAirport && !selected && <AirportPanel icao={selectedAirport} now={serverNow} onClose={() => setSelectedAirport(null)} />}
       {selected && (
         <FlightPanel
           hex={selected}

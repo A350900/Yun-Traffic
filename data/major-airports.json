@@ -1,905 +1,1105 @@
 {
-"_about": "The 100 busiest airports by passengers (approximate 2024 ranking, based on ACI World's preliminary 2024 figures; the top 20 follow ACI, the order further down is approximate). Shown as pins on the map. Fields: [ICAO, IATA, name, city, lat, lon, rank].",
+"_about": "The 100 busiest airports by passengers (approximate 2024 ranking, based on ACI World's preliminary 2024 figures; the top 20 follow ACI, the order further down is approximate). Shown as pins on the map. Fields: [ICAO, IATA, name, city, country (ISO), lat, lon, rank, time zone].",
 "airports": [
 [
 "KATL",
 "ATL",
 "Hartsfield Jackson Atlanta International Airport",
 "Atlanta",
+"US",
 33.6367,
 -84.4281,
-1
+1,
+"America/New_York"
 ],
 [
 "OMDB",
 "DXB",
 "Dubai International Airport",
 "Dubai",
+"AE",
 25.2528,
 55.3644,
-2
+2,
+"Asia/Dubai"
 ],
 [
 "KDFW",
 "DFW",
 "Dallas Fort Worth International Airport",
 "Dallas-Fort Worth",
+"US",
 32.8968,
 -97.038,
-3
+3,
+"America/Chicago"
 ],
 [
 "RJTT",
 "HND",
 "Tokyo International Airport",
 "Tokyo",
+"JP",
 35.5523,
 139.78,
-4
+4,
+"Asia/Tokyo"
 ],
 [
 "EGLL",
 "LHR",
 "London Heathrow Airport",
 "London",
+"GB",
 51.4706,
 -0.4619,
-5
+5,
+"Europe/London"
 ],
 [
 "KDEN",
 "DEN",
 "Denver International Airport",
 "Denver",
+"US",
 39.8617,
 -104.673,
-6
+6,
+"America/Denver"
 ],
 [
 "KORD",
 "ORD",
 "Chicago O'Hare International Airport",
 "Chicago",
+"US",
 41.9786,
 -87.9048,
-7
+7,
+"America/Chicago"
 ],
 [
 "LTFM",
 "IST",
 "Istanbul Airport",
 "Arnavutkoy",
+"TR",
 41.2622,
 28.7278,
-8
+8,
+"Europe/Istanbul"
 ],
 [
 "KLAX",
 "LAX",
 "Los Angeles International Airport",
 "Los Angeles",
+"US",
 33.9425,
 -118.408,
-9
+9,
+"America/Los_Angeles"
 ],
 [
 "VIDP",
 "DEL",
 "Indira Gandhi International Airport",
 "New Delhi",
+"IN",
 28.5665,
 77.1031,
-10
+10,
+"Asia/Kolkata"
 ],
 [
 "LFPG",
 "CDG",
 "Charles de Gaulle International Airport",
 "Paris",
+"FR",
 49.0128,
 2.55,
-11
+11,
+"Europe/Paris"
 ],
 [
 "KJFK",
 "JFK",
 "John F Kennedy International Airport",
 "New York",
+"US",
 40.6398,
 -73.7789,
-12
+12,
+"America/New_York"
 ],
 [
 "ZGGG",
 "CAN",
 "Guangzhou Baiyun International Airport",
 "Guangzhou",
+"CN",
 23.3924,
 113.299,
-13
+13,
+"Asia/Shanghai"
 ],
 [
 "EHAM",
 "AMS",
 "Amsterdam Airport Schiphol",
 "Amsterdam",
+"NL",
 52.3086,
 4.7639,
-14
+14,
+"Europe/Amsterdam"
 ],
 [
 "WSSS",
 "SIN",
 "Singapore Changi International Airport",
 "Singapore",
+"SG",
 1.3502,
 103.994,
-15
+15,
+"Asia/Singapore"
 ],
 [
 "ZSPD",
 "PVG",
 "Shanghai Pudong International Airport",
 "Shanghai",
+"CN",
 31.1434,
 121.805,
-16
+16,
+"Asia/Shanghai"
 ],
 [
 "RKSI",
 "ICN",
 "Incheon International Airport",
 "Seoul",
+"KR",
 37.4691,
 126.451,
-17
+17,
+"Asia/Seoul"
 ],
 [
 "ZBAA",
 "PEK",
 "Beijing Capital International Airport",
 "Beijing",
+"CN",
 40.0801,
 116.585,
-18
+18,
+"Asia/Shanghai"
 ],
 [
 "KMCO",
 "MCO",
 "Orlando International Airport",
 "Orlando",
+"US",
 28.4294,
 -81.309,
-19
+19,
+"America/New_York"
 ],
 [
 "LEMD",
 "MAD",
 "Madrid Barajas International Airport",
 "Madrid",
+"ES",
 40.4936,
 -3.5668,
-20
+20,
+"Europe/Madrid"
 ],
 [
 "EDDF",
 "FRA",
 "Frankfurt am Main International Airport",
 "Frankfurt-am-Main",
+"DE",
 50.0264,
 8.5431,
-21
+21,
+"Europe/Berlin"
 ],
 [
 "VTBS",
 "BKK",
 "Suvarnabhumi Airport",
 "Bangkok",
+"TH",
 13.6811,
 100.747,
-22
+22,
+"Asia/Bangkok"
 ],
 [
 "KLAS",
 "LAS",
 "Harry Reid International Airport",
 "Las Vegas",
+"US",
 36.0801,
 -115.152,
-23
+23,
+"America/Los_Angeles"
 ],
 [
 "KCLT",
 "CLT",
 "Charlotte Douglas International Airport",
 "Charlotte",
+"US",
 35.214,
 -80.9431,
-24
+24,
+"America/New_York"
 ],
 [
 "ZGSZ",
 "SZX",
 "Shenzhen Bao'an International Airport",
 "Shenzhen",
+"CN",
 22.6393,
 113.811,
-25
+25,
+"Asia/Shanghai"
 ],
 [
 "ZUTF",
 "TFU",
 "Chengdu Tianfu International Airport",
 "Chengdu",
+"CN",
 30.319,
 104.445,
-26
+26,
+"Asia/Shanghai"
 ],
 [
 "KMIA",
 "MIA",
 "Miami International Airport",
 "Miami",
+"US",
 25.7932,
 -80.2906,
-27
+27,
+"America/New_York"
 ],
 [
 "LEBL",
 "BCN",
 "Barcelona International Airport",
 "Barcelona",
+"ES",
 41.2971,
 2.0785,
-28
+28,
+"Europe/Madrid"
 ],
 [
 "KSEA",
 "SEA",
 "Seattle Tacoma International Airport",
 "Seattle",
+"US",
 47.449,
 -122.309,
-29
+29,
+"America/Los_Angeles"
 ],
 [
 "KSFO",
 "SFO",
 "San Francisco International Airport",
 "San Francisco",
+"US",
 37.619,
 -122.375,
-30
+30,
+"America/Los_Angeles"
 ],
 [
 "KEWR",
 "EWR",
 "Newark Liberty International Airport",
 "Newark",
+"US",
 40.6925,
 -74.1687,
-31
+31,
+"America/New_York"
 ],
 [
 "KPHX",
 "PHX",
 "Phoenix Sky Harbor International Airport",
 "Phoenix",
+"US",
 33.4343,
 -112.012,
-32
+32,
+"America/Phoenix"
 ],
 [
 "KIAH",
 "IAH",
 "George Bush Intercontinental Houston Airport",
 "Houston",
+"US",
 29.9844,
 -95.3414,
-33
+33,
+"America/Chicago"
 ],
 [
 "MMMX",
 "MEX",
 "Licenciado Benito Juarez International Airport",
 "Mexico City",
+"MX",
 19.4363,
 -99.0721,
-34
+34,
+"America/Mexico_City"
 ],
 [
 "VABB",
 "BOM",
 "Chhatrapati Shivaji International Airport",
 "Mumbai",
+"IN",
 19.0887,
 72.8679,
-35
+35,
+"Asia/Kolkata"
 ],
 [
 "WIII",
 "CGK",
 "Soekarno-Hatta International Airport",
 "Jakarta",
+"ID",
 -6.1256,
 106.656,
-36
+36,
+"Asia/Jakarta"
 ],
 [
 "OTHH",
 "DOH",
 "Hamad International Airport",
 "Doha",
+"QA",
 25.2606,
 51.6138,
-37
+37,
+"Asia/Qatar"
 ],
 [
 "VHHH",
 "HKG",
 "Chek Lap Kok International Airport",
 "Hong Kong",
+"HK",
 22.3089,
 113.915,
-38
+38,
+"Asia/Hong_Kong"
 ],
 [
 "WMKK",
 "KUL",
 "Kuala Lumpur International Airport",
 "Kuala Lumpur",
+"MY",
 2.7456,
 101.71,
-39
+39,
+"Asia/Kuala_Lumpur"
 ],
 [
 "LTFJ",
 "SAW",
 "Sabiha Gokcen International Airport",
 "Istanbul",
+"TR",
 40.8986,
 29.3092,
-40
+40,
+"Europe/Istanbul"
 ],
 [
 "CYYZ",
 "YYZ",
 "Lester B. Pearson International Airport",
 "Toronto",
+"CA",
 43.6772,
 -79.6306,
-41
+41,
+"America/Toronto"
 ],
 [
 "KBOS",
 "BOS",
 "General Edward Lawrence Logan International Airport",
 "Boston",
+"US",
 42.3643,
 -71.0052,
-42
+42,
+"America/New_York"
 ],
 [
 "LIRF",
 "FCO",
 "Leonardo Da Vinci (Fiumicino) International Airport",
 "Rome",
+"IT",
 41.8045,
 12.2508,
-43
+43,
+"Europe/Rome"
 ],
 [
 "EDDM",
 "MUC",
 "Munich International Airport",
 "Munich",
+"DE",
 48.3538,
 11.7861,
-44
+44,
+"Europe/Berlin"
 ],
 [
 "KMSP",
 "MSP",
 "Minneapolis-St Paul International/Wold-Chamberlain Airport",
 "Minneapolis",
+"US",
 44.882,
 -93.2218,
-45
+45,
+"America/Chicago"
 ],
 [
 "OEJN",
 "JED",
 "King Abdulaziz International Airport",
 "Jeddah",
+"SA",
 21.6796,
 39.1565,
-46
+46,
+"Asia/Riyadh"
 ],
 [
 "OERK",
 "RUH",
 "King Khaled International Airport",
 "Riyadh",
+"SA",
 24.9576,
 46.6988,
-47
+47,
+"Asia/Riyadh"
 ],
 [
 "RPLL",
 "MNL",
 "Ninoy Aquino International Airport",
 "Manila",
+"PH",
 14.5086,
 121.02,
-48
+48,
+"Asia/Manila"
 ],
 [
 "VVTS",
 "SGN",
 "Tan Son Nhat International Airport",
 "Ho Chi Minh City",
+"VN",
 10.8188,
 106.652,
-49
+49,
+"Asia/Ho_Chi_Minh"
 ],
 [
 "ZPPP",
 "KMG",
 "Kunming Wujiaba International Airport",
 "Kunming",
+"CN",
 24.9924,
 102.744,
-50
+50,
+"Asia/Shanghai"
 ],
 [
 "ZUCK",
 "CKG",
 "Chongqing Jiangbei International Airport",
 "Chongqing",
+"CN",
 29.7192,
 106.642,
-51
+51,
+"Asia/Shanghai"
 ],
 [
 "ZLXY",
 "XIY",
 "Xi'an Xianyang International Airport",
 "Xianyang",
+"CN",
 34.4471,
 108.752,
-52
+52,
+"Asia/Shanghai"
 ],
 [
 "ZSHC",
 "HGH",
 "Hangzhou Xiaoshan International Airport",
 "Hangzhou",
+"CN",
 30.2295,
 120.434,
-53
+53,
+"Asia/Shanghai"
 ],
 [
 "ZSSS",
 "SHA",
 "Shanghai Hongqiao International Airport",
 "Shanghai",
+"CN",
 31.1979,
 121.336,
-54
+54,
+"Asia/Shanghai"
 ],
 [
 "ZBAD",
 "PKX",
 "Beijing Daxing International Airport",
 "Beijing",
+"CN",
 39.5092,
 116.4106,
-55
+55,
+"Asia/Shanghai"
 ],
 [
 "KDTW",
 "DTW",
 "Detroit Metropolitan Wayne County Airport",
 "Detroit",
+"US",
 42.2124,
 -83.3534,
-56
+56,
+"America/Detroit"
 ],
 [
 "YSSY",
 "SYD",
 "Sydney Kingsford Smith International Airport",
 "Sydney",
+"AU",
 -33.9461,
 151.177,
-57
+57,
+"Australia/Sydney"
 ],
 [
 "KFLL",
 "FLL",
 "Fort Lauderdale Hollywood International Airport",
 "Fort Lauderdale",
+"US",
 26.0726,
 -80.1527,
-58
+58,
+"America/New_York"
 ],
 [
 "EGKK",
 "LGW",
 "London Gatwick Airport",
 "London",
+"GB",
 51.1481,
 -0.1903,
-59
+59,
+"Europe/London"
 ],
 [
 "SBGR",
 "GRU",
 "Guarulhos - Governador Andre Franco Montoro International Airport",
 "Sao Paulo",
+"BR",
 -23.4356,
 -46.4731,
-60
+60,
+"America/Sao_Paulo"
 ],
 [
 "EIDW",
 "DUB",
 "Dublin Airport",
 "Dublin",
+"IE",
 53.4213,
 -6.2701,
-61
+61,
+"Europe/Dublin"
 ],
 [
 "RJAA",
 "NRT",
 "Narita International Airport",
 "Tokyo",
+"JP",
 35.7647,
 140.386,
-62
+62,
+"Asia/Tokyo"
 ],
 [
 "RCTP",
 "TPE",
 "Taiwan Taoyuan International Airport",
 "Taipei",
+"TW",
 25.0777,
 121.233,
-63
+63,
+"Asia/Taipei"
 ],
 [
 "LEPA",
 "PMI",
 "Palma De Mallorca Airport",
 "Palma De Mallorca",
+"ES",
 39.5517,
 2.7388,
-64
+64,
+"Europe/Madrid"
 ],
 [
 "VOBL",
 "BLR",
 "Bengaluru International Airport",
 "Bangalore",
+"IN",
 13.1979,
 77.7063,
-65
+65,
+"Asia/Kolkata"
 ],
 [
 "KPHL",
 "PHL",
 "Philadelphia International Airport",
 "Philadelphia",
+"US",
 39.8719,
 -75.2411,
-66
+66,
+"America/New_York"
 ],
 [
 "KBWI",
 "BWI",
 "Baltimore/Washington International Thurgood Marshal Airport",
 "Baltimore",
+"US",
 39.1754,
 -76.6683,
-67
+67,
+"America/New_York"
 ],
 [
 "KSLC",
 "SLC",
 "Salt Lake City International Airport",
 "Salt Lake City",
+"US",
 40.7884,
 -111.978,
-68
+68,
+"America/Denver"
 ],
 [
 "KLGA",
 "LGA",
 "La Guardia Airport",
 "New York",
+"US",
 40.7772,
 -73.8726,
-69
+69,
+"America/New_York"
 ],
 [
 "KDCA",
 "DCA",
 "Ronald Reagan Washington National Airport",
 "Washington",
+"US",
 38.8521,
 -77.0377,
-70
+70,
+"America/New_York"
 ],
 [
 "KIAD",
 "IAD",
 "Washington Dulles International Airport",
 "Dulles",
+"US",
 38.9445,
 -77.4558,
-71
+71,
+"America/New_York"
 ],
 [
 "KSAN",
 "SAN",
 "San Diego International Airport",
 "San Diego",
+"US",
 32.7336,
 -117.19,
-72
+72,
+"America/Los_Angeles"
 ],
 [
 "KTPA",
 "TPA",
 "Tampa International Airport",
 "Tampa",
+"US",
 27.9755,
 -82.5332,
-73
+73,
+"America/New_York"
 ],
 [
 "KBNA",
 "BNA",
 "Nashville International Airport",
 "Nashville",
+"US",
 36.1245,
 -86.6782,
-74
+74,
+"America/Chicago"
 ],
 [
 "KAUS",
 "AUS",
 "Austin Bergstrom International Airport",
 "Austin",
+"US",
 30.1945,
 -97.6699,
-75
+75,
+"America/Chicago"
 ],
 [
 "KMDW",
 "MDW",
 "Chicago Midway International Airport",
 "Chicago",
+"US",
 41.786,
 -87.7524,
-76
+76,
+"America/Chicago"
 ],
 [
 "PHNL",
 "HNL",
 "Honolulu International Airport",
 "Honolulu",
+"US",
 21.3187,
 -157.922,
-77
+77,
+"Pacific/Honolulu"
 ],
 [
 "YMML",
 "MEL",
 "Melbourne International Airport",
 "Melbourne",
+"AU",
 -37.6733,
 144.843,
-78
+78,
+"Australia/Melbourne"
 ],
 [
 "LSZH",
 "ZRH",
 "Zurich Airport",
 "Zurich",
+"CH",
 47.4647,
 8.5492,
-79
+79,
+"Europe/Zurich"
 ],
 [
 "EKCH",
 "CPH",
 "Copenhagen Kastrup Airport",
 "Copenhagen",
+"DK",
 55.6179,
 12.656,
-80
+80,
+"Europe/Copenhagen"
 ],
 [
 "ENGM",
 "OSL",
 "Oslo Gardermoen Airport",
 "Oslo",
+"NO",
 60.1939,
 11.1004,
-81
+81,
+"Europe/Oslo"
 ],
 [
 "LOWW",
 "VIE",
 "Vienna International Airport",
 "Vienna",
+"AT",
 48.1103,
 16.5697,
-82
+82,
+"Europe/Vienna"
 ],
 [
 "LPPT",
 "LIS",
 "Lisbon Portela Airport",
 "Lisbon",
+"PT",
 38.7813,
 -9.1359,
-83
+83,
+"Europe/Lisbon"
 ],
 [
 "EGCC",
 "MAN",
 "Manchester Airport",
 "Manchester",
+"GB",
 53.3537,
 -2.275,
-84
+84,
+"Europe/London"
 ],
 [
 "LGAV",
 "ATH",
 "Eleftherios Venizelos International Airport",
 "Athens",
+"GR",
 37.9364,
 23.9445,
-85
+85,
+"Europe/Athens"
 ],
 [
 "LTAI",
 "AYT",
 "Antalya International Airport",
 "Antalya",
+"TR",
 36.8987,
 30.8005,
-86
+86,
+"Europe/Istanbul"
 ],
 [
 "UUEE",
 "SVO",
 "Sheremetyevo International Airport",
 "Moscow",
+"RU",
 55.9726,
 37.4146,
-87
+87,
+"Europe/Moscow"
 ],
 [
 "SKBO",
 "BOG",
 "El Dorado International Airport",
 "Bogota",
+"CO",
 4.7016,
 -74.1469,
-88
+88,
+"America/Bogota"
 ],
 [
 "MMUN",
 "CUN",
 "Cancun International Airport",
 "Cancun",
+"MX",
 21.0365,
 -86.8771,
-89
+89,
+"America/Cancun"
 ],
 [
 "VVNB",
 "HAN",
 "Noi Bai International Airport",
 "Hanoi",
+"VN",
 21.2212,
 105.807,
-90
+90,
+"Asia/Bangkok"
 ],
 [
 "HECA",
 "CAI",
 "Cairo International Airport",
 "Cairo",
+"EG",
 30.1219,
 31.4056,
-91
+91,
+"Africa/Cairo"
 ],
 [
 "OMAA",
 "AUH",
 "Abu Dhabi International Airport",
 "Abu Dhabi",
+"AE",
 24.433,
 54.6511,
-92
+92,
+"Asia/Dubai"
 ],
 [
 "RJBB",
 "KIX",
 "Kansai International Airport",
 "Osaka",
+"JP",
 34.4273,
 135.244,
-93
+93,
+"Asia/Tokyo"
 ],
 [
 "ZSNJ",
 "NKG",
 "Nanjing Lukou Airport",
 "Nanjing",
+"CN",
 31.742,
 118.862,
-94
+94,
+"Asia/Shanghai"
 ],
 [
 "ZHHH",
 "WUH",
 "Wuhan Tianhe International Airport",
 "Wuhan",
+"CN",
 30.7838,
 114.208,
-95
+95,
+"Asia/Shanghai"
 ],
 [
 "ZGHA",
 "CSX",
 "Changsha Huanghua Airport",
 "Changsha",
+"CN",
 28.1892,
 113.22,
-96
+96,
+"Asia/Shanghai"
 ],
 [
 "VOHS",
 "HYD",
 "Rajiv Gandhi International Airport Shamshabad",
 "Hyderabad",
+"IN",
 17.2313,
 78.4299,
-97
+97,
+"Asia/Kolkata"
 ],
 [
 "VOMM",
 "MAA",
 "Chennai International Airport",
 "Chennai",
+"IN",
 12.99,
 80.1693,
-98
+98,
+"Asia/Kolkata"
 ],
 [
 "VTBD",
 "DMK",
 "Don Mueang International Airport",
 "Bangkok",
+"TH",
 13.9126,
 100.607,
-99
+99,
+"Asia/Bangkok"
 ],
 [
 "CYVR",
 "YVR",
 "Vancouver International Airport",
 "Vancouver",
+"CA",
 49.1939,
 -123.184,
-100
+100,
+"America/Vancouver"
 ]
 ]
 }

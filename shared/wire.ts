@@ -112,6 +112,9 @@ export interface FlightInfo {
   } | null
 }
 
+/** Airport photo from Wikimedia Commons (GET /api/airport-photo/:icao); credit the author and license, linking to `link`. */
+export type AirportPhoto = { src: string; link: string; author: string; license: string | null } | null
+
 /** planespotters.net photo (GET /api/photo/:hex); must be shown with the photographer credit and link */
 export type FlightPhoto = { src: string; link: string; photographer: string } | null
 

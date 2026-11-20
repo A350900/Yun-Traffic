@@ -18,6 +18,11 @@ const OPTIONS: { key: ToggleKey; label: string; hint: string }[] = [
     label: 'Weather radar',
     hint: 'Rain and storms from the past 2 hours. More options under Weather.',
   },
+  {
+    key: 'firBoundaries',
+    label: 'Control boundaries',
+    hint: 'En-route control areas (FIRs) worldwide; dashed over oceans. Approximate (VATSpy data, CC BY-SA).',
+  },
 ]
 
 export default function LayersMenu({ layers, onChange }: Props) {

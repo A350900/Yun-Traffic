@@ -2,10 +2,10 @@ import type { ExpressionSpecification, Map as MLMap } from 'maplibre-gl'
 import majorAirports from '../../data/major-airports.json'
 
 /**
- * Pins for the world's 100 busiest airports (data/major-airports.json).
- * Hidden when zoomed far out, fading in from zoom ~3.5; the IATA code appears
- * beside the pin once zoomed in a little more. Where pins would overlap, the
- * busier airport wins.
+ * Pins for the world's 100 busiest airports (data/major-airports.json), drawn
+ * above the aircraft. Hidden when zoomed all the way out, fading in from zoom
+ * ~2.2; the IATA code appears beside the pin once zoomed in a little more.
+ * Where pins would overlap, the busier airport wins. Clicking one opens its card.
  */
 
 const SOURCE = 'major-airports'
@@ -73,35 +73,37 @@ function drawPin(): ImageData {
   return ctx.getImageData(0, 0, W * PX, H * PX)
 }
 
-type Row = [icao: string, iata: string, name: string, city: string, lat: number, lon: number, rank: number]
+export type MajorAirport = [icao: string, iata: string, name: string, city: string, country: string, lat: number, lon: number, rank: number, tz: string]
+export const MAJOR_AIRPORTS = majorAirports.airports as MajorAirport[]
+export const majorAirport = (icao: string) => MAJOR_AIRPORTS.find((a) => a[0] === icao)
 
 function geojson() {
   return {
     type: 'FeatureCollection' as const,
-    features: (majorAirports.airports as Row[]).map(([icao, iata, name, city, lat, lon, rank]) => ({
+    features: MAJOR_AIRPORTS.map(([icao, iata, , , , lat, lon, rank]) => ({
       type: 'Feature' as const,
-      properties: { icao, iata, name, city, rank },
+      properties: { icao, iata, rank },
       geometry: { type: 'Point' as const, coordinates: [lon, lat] },
     })),
   }
 }
 
-/** Add the pins below `beforeLayer` (so aircraft and flight paths draw on top). */
+/** Add the pins (on top of everything else unless `beforeLayer` is given). */
 export function addAirportLayer(map: MLMap, beforeLayer?: string) {
   if (!map.hasImage(ICON)) map.addImage(ICON, drawPin(), { pixelRatio: PX })
   if (!map.getSource(SOURCE)) map.addSource(SOURCE, { type: 'geojson', data: geojson() })
   if (map.getLayer(AIRPORT_LAYER)) return
-  const fadeIn = ['interpolate', ['linear'], ['zoom'], 3.4, 0, 4, 1] as unknown as ExpressionSpecification
+  const fadeIn = ['interpolate', ['linear'], ['zoom'], 2.2, 0, 2.7, 1] as unknown as ExpressionSpecification
   map.addLayer(
     {
       id: AIRPORT_LAYER,
       type: 'symbol',
       source: SOURCE,
-      minzoom: 3.4,
+      minzoom: 2.2,
       layout: {
         'icon-image': ICON,
         'icon-anchor': 'bottom',
-        'icon-size': ['interpolate', ['linear'], ['zoom'], 3.4, 0.6, 6, 0.8, 9, 0.95] as unknown as ExpressionSpecification,
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 2.2, 0.5, 4, 0.65, 6, 0.8, 9, 0.95] as unknown as ExpressionSpecification,
         'icon-allow-overlap': false, // overlapping pins: the busier airport is shown
         'icon-ignore-placement': true, // ...without hiding the map's own labels
         'symbol-sort-key': ['get', 'rank'],

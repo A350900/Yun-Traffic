@@ -669,3 +669,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .dialog-close:hover { background: var(--panel-hover); color: var(--text); }
 
 .route-end.unknown .route-code { color: var(--text-dim); }
+
+/* ---------- Airport card ---------- */
+.airport-facts { display: grid; gap: 10px; }
+.airport-facts > div { display: flex; flex-direction: column; gap: 2px; }
+.fact-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+.fact-value { font-size: 14px; }
+.fact-value .dim { color: var(--text-dim); font-size: 12px; margin-left: 4px; }
+.airport-note { margin: 0; font-size: 12px; color: var(--text-dim); }

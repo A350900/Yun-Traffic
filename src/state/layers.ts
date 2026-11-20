@@ -7,9 +7,11 @@ export interface LayerSettings {
   radar: boolean
   radarStyle: RadarStyle
   radarOpacity: number
+  /** en-route control boundaries (FIRs) */
+  firBoundaries: boolean
 }
 
-const DEFAULTS: LayerSettings = { dayNight: true, radar: false, radarStyle: 'cartoon', radarOpacity: 0.85 }
+const DEFAULTS: LayerSettings = { dayNight: true, radar: false, radarStyle: 'cartoon', radarOpacity: 0.85, firBoundaries: false }
 const KEY = 'yun.layers'
 
 function load(): LayerSettings {

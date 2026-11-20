@@ -12,7 +12,8 @@ import { addDayNightLayer, setDayNightVisible, updateDayNight } from '../layers/
 import type { RadarController } from '../layers/radar'
 import type { SelectionStore } from '../flights/selection'
 import { addPathLayers, clearPath, updatePath } from '../flights/pathLayer'
-import { addAirportLayer } from '../layers/airports'
+import { addAirportLayer, AIRPORT_LAYER } from '../layers/airports'
+import { setFirVisible } from '../layers/fir'
 import { extrapolate } from '../flights/position'
 import { F } from '../../shared/wire'
 import type { SimController } from '../sim/client' // simulated traffic
@@ -62,6 +63,10 @@ const FOCUS_MIN_ZOOM = 5
 
 interface Props {
   onSelect: (hex: string | null) => void
+  /** a busiest-airport pin was clicked (ICAO) */
+  onSelectAirport: (icao: string) => void
+  /** Show en-route control boundaries (FIRs) */
+  firBoundaries: boolean
   onFeed: (state: FeedState) => void
   /** Show the day/night (solar terminator) overlay */
   dayNight: boolean
@@ -82,10 +87,14 @@ function focusFor(map: MLMap): FocusHint | null {
   return { lat: c.lat, lon: c.lng, radiusNm: Math.max(radiusNm, 25) }
 }
 
-function FlightMap({ onSelect, onFeed, dayNight, radar, selection, sim, simEnabled, simShowAreas }: Props) {
+function FlightMap({ onSelect, onSelectAirport, firBoundaries, onFeed, dayNight, radar, selection, sim, simEnabled, simShowAreas }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
   const onSelectRef = useRef(onSelect)
+  const onSelectAirportRef = useRef(onSelectAirport)
+  onSelectAirportRef.current = onSelectAirport
+  const firRef = useRef(firBoundaries)
+  firRef.current = firBoundaries
   const onFeedRef = useRef(onFeed)
   const dayNightRef = useRef(dayNight)
   const simEnabledRef = useRef(simEnabled) // simulated traffic
@@ -234,9 +243,10 @@ function FlightMap({ onSelect, onFeed, dayNight, radar, selection, sim, simEnabl
       dayNightTimer = window.setInterval(() => updateDayNight(map), 60_000)
       radar.attach(map) // above day/night, below labels and aircraft
       addAircraftLayers(map)
-      addAirportLayer(map, ICON_LAYERS[0]) // busiest airports: under paths, simulated and live aircraft
       addPathLayers(map, ICON_LAYERS[0]) // under the aircraft icons
       if (simEnabledRef.current) sim.enable(map, ICON_LAYERS[0]) // simulated traffic, under live aircraft
+      addAirportLayer(map) // busiest airports: on top
+      if (firRef.current) setFirVisible(map, true, ICON_LAYERS[0]) // control boundaries, under everything of ours
       drawAllProgressively()
       renderTimer = window.setInterval(tick, TICK_MS)
     })
@@ -247,11 +257,14 @@ function FlightMap({ onSelect, onFeed, dayNight, radar, selection, sim, simEnabl
         [e.point.x - 4, e.point.y - 4],
         [e.point.x + 4, e.point.y + 4],
       ]
+      // Airport pins sit on top, so they're checked first.
+      const pin = map.getLayer(AIRPORT_LAYER) ? map.queryRenderedFeatures(e.point, { layers: [AIRPORT_LAYER] })[0] : undefined
+      if (pin) return onSelectAirportRef.current(pin.properties.icao as string)
       const hit = map.queryRenderedFeatures(box, { layers: ICON_LAYERS })[0]
       // Clicking empty map clears the selection.
       onSelectRef.current((hit?.properties?.hex as string | undefined) ?? null)
     })
-    for (const id of ICON_LAYERS) {
+    for (const id of [...ICON_LAYERS, AIRPORT_LAYER]) {
       map.on('mouseenter', id, () => (map.getCanvas().style.cursor = 'pointer'))
       map.on('mouseleave', id, () => (map.getCanvas().style.cursor = ''))
     }
@@ -275,6 +288,11 @@ function FlightMap({ onSelect, onFeed, dayNight, radar, selection, sim, simEnabl
     const map = mapRef.current
     if (map) setDayNightVisible(map, dayNight)
   }, [dayNight])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (map?.getSource('aircraft-0')) setFirVisible(map, firBoundaries, ICON_LAYERS[0])
+  }, [firBoundaries])
 
   // simulated traffic: switched on/off in Settings
   useEffect(() => {
