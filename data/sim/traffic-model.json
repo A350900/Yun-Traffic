@@ -339,5 +339,16 @@
       "flights": 106600,
       "basis": "source: IATA via BusinessStats, 38.9 million flights in 2025"
     }
+  },
+  "corridorDailyFlights": {
+    "_note": "Average daily flights (both directions) on long ocean corridors. The calibration scales the routes in each corridor so its share of global flights matches. Corridors: see corridorOf() in src/sim/schedule.ts.",
+    "europeNorthAmerica": {
+      "flights": 1590,
+      "basis": "source: 580,487 flights between Europe and North America in 2023 (ForeFlight, 'Transatlantic Flight Operations'), /365"
+    },
+    "transpacific": {
+      "flights": 770,
+      "basis": "estimate: ~640 passenger flights/day between the Americas and Asia/Oceania (route network) plus ~130 cargo flights/day (Anchorage handles most Asia-North America freighters; the passenger-only route data has none, so passenger routes stand in for them)"
+    }
   }
 }

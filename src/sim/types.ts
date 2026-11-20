@@ -16,6 +16,7 @@ export interface RoutesFile {
 export interface TrafficModel {
   globalAirborne: { julyPeak: { value: number }; novemberTrough: { value: number } }
   regionalDailyFlights: Record<string, { countries?: string[]; flights: number }>
+  corridorDailyFlights?: Record<string, { flights: number } | string>
   monthly: Record<string, { factors: number[] }>
   weekday: { factors: Record<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun', number> }
   departureProfiles: {
@@ -33,6 +34,8 @@ export interface Calibration {
   distanceSoftenKm?: number
   /** departure country (ISO) -> multiplier */
   countryMultipliers: Record<string, number>
+  /** ocean corridor (see corridorOf in schedule.ts) -> multiplier */
+  corridorMultipliers?: Record<string, number>
 }
 
 export interface SimData {

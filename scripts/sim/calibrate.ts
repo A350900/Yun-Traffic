@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { SimModel } from '../../src/sim/model.ts'
 import { SIM_CONFIG } from '../../src/sim/config.ts'
+import { corridorOf } from '../../src/sim/schedule.ts'
 import { regionOf } from '../../shared/sim/regions.ts'
 import type { Calibration, SimData } from '../../src/sim/types.ts'
 
@@ -33,10 +34,23 @@ function departuresByCountry(m: SimModel, key: string) {
   return by
 }
 
+const corridors = Object.entries(base.model.corridorDailyFlights ?? {}).filter(([k]) => !k.startsWith('_')) as [string, { flights: number }][]
+function flightsByCorridor(m: SimModel, key: string) {
+  const by: Record<string, number> = {}
+  for (const f of m.day(key)) {
+    const r = m.routes[f.route]
+    const a = base.airports[r.dep]
+    const b = base.airports[r.arr]
+    const c = corridorOf({ country: a[3], lat: a[4], lon: a[5] }, { country: b[3], lat: b[4], lon: b[5] })
+    if (c) by[c] = (by[c] ?? 0) + 1
+  }
+  return by
+}
+
 /** Regional shares + global peak, for a given distance setting. */
 function calibrate(distanceSoftenKm: number, log = false): Calibration {
-  const cal: Calibration = { scale: SIM_CONFIG.defaultScale, distanceSoftenKm, countryMultipliers: {} }
-  for (let pass = 1; pass <= 4; pass++) {
+  const cal: Calibration = { scale: SIM_CONFIG.defaultScale, distanceSoftenKm, countryMultipliers: {}, corridorMultipliers: {} }
+  for (let pass = 1; pass <= 6; pass++) {
     const m = new SimModel({ ...base, calibration: cal })
     const by = departuresByCountry(m, AVG_DAY)
     const total = Object.values(by).reduce((a, b) => a + b, 0)
@@ -46,7 +60,14 @@ function calibrate(distanceSoftenKm: number, log = false): Calibration {
       const want = (t.flights / world) * total
       const adj = have > 0 ? want / have : 1
       for (const c of t.countries) cal.countryMultipliers[c] = +((cal.countryMultipliers[c] ?? 1) * adj).toFixed(4)
-      if (log && pass === 4) console.log(`  ${name}: ${have} -> want ${Math.round(want)}`)
+      if (log && pass === 6) console.log(`  ${name}: ${have} -> want ${Math.round(want)}`)
+    }
+    const byCorridor = flightsByCorridor(new SimModel({ ...base, calibration: cal }), AVG_DAY)
+    for (const [name, t] of corridors) {
+      const have = byCorridor[name] ?? 0
+      const want = (t.flights / world) * total
+      if (have > 0) cal.corridorMultipliers![name] = +((cal.corridorMultipliers![name] ?? 1) * (want / have)).toFixed(4)
+      if (log && pass === 6) console.log(`  ${name}: ${have} -> want ${Math.round(want)}`)
     }
     const n = new SimModel({ ...base, calibration: cal }).countAirborne(PEAK)
     cal.scale = +(cal.scale * (base.model.globalAirborne.julyPeak.value / n)).toPrecision(5)
@@ -60,7 +81,7 @@ if (process.argv.includes('--write')) {
   // count means flights have a realistic average length (otherwise long-haul
   // flights over oceans and poles end up over-represented).
   let best: { cal: Calibration; flights: number } | null = null
-  for (const soften of [2500, 1800, 1300, 1000, 800, 650, 500, 400]) {
+  for (const soften of [2500, 1800, 1300, 1000, 800, 650, 500, 400, 320, 260, 200]) {
     const c = calibrate(soften)
     const flights = new SimModel({ ...base, calibration: c }).day(AVG_DAY).length
     console.log(`distance setting ${soften} km: ${flights.toLocaleString()} flights/day (target ${world.toLocaleString()})`)
@@ -90,6 +111,8 @@ console.log(`  min ${Math.min(...nov)} at ${nov.indexOf(Math.min(...nov))}:30 UT
 const avg = departuresByCountry(m, AVG_DAY)
 const avgTotal = Object.values(avg).reduce((a, b) => a + b, 0)
 console.log(`\nflights on an average day (${AVG_DAY}): ${avgTotal.toLocaleString()}  (IATA: ~${world.toLocaleString()})`)
+const avgCorr = flightsByCorridor(m, AVG_DAY)
+for (const [name, t] of corridors) console.log(`  ${name}: ${avgCorr[name] ?? 0}  (target ${t.flights})`)
 for (const [name, t] of Object.entries(targets)) {
   if (!t.countries) continue
   console.log(`  ${name.padEnd(7)} ${String(t.countries.reduce((s, c) => s + (avg[c] ?? 0), 0)).padStart(6)}  (target ${t.flights})`)
@@ -108,7 +131,7 @@ for (const [label, t] of [
   }
   console.log(`\n${label}: ${Object.entries(reg).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ')}`)
 }
-console.log('(North Atlantic reference: ~1,500 flights/day, summer peaks ~1,800-1,970 -> roughly 700-800 airborne at the July peak)')
+console.log('(North Atlantic reference: ~1,590 Europe-North America flights/day, ~4 h each inside this box -> ~265 on average, plus Africa/Caribbean/S. America-Europe; overnight eastbound and daytime westbound waves)')
 for (const h of [3, 15]) {
   const t = Date.UTC(2024, 6, 11, h)
   let east = 0

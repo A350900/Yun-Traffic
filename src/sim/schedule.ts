@@ -33,6 +33,16 @@ export function seasonGroup(country: string, lat: number, lon: number): string {
 }
 
 const isAsia = (lat: number, lon: number) => lon > 60 && lat > -11
+
+/** Long ocean corridor a route belongs to (keys of traffic-model.json "corridorDailyFlights"), if any. */
+export function corridorOf(a: { country: string; lat: number; lon: number }, b: { country: string; lat: number; lon: number }): string | null {
+  const gA = seasonGroup(a.country, a.lat, a.lon)
+  const gB = seasonGroup(b.country, b.lat, b.lon)
+  if ((gA === 'europe' && gB === 'northAmerica') || (gA === 'northAmerica' && gB === 'europe')) return 'europeNorthAmerica'
+  // the Americas <-> Asia/Oceania (lon > 100: east Asia, Southeast Asia, Australia, NZ)
+  if ((a.lon < -30 && b.lon > 100) || (b.lon < -30 && a.lon > 100)) return 'transpacific'
+  return null
+}
 const WIDE = /^(A3[0-5]|A38|B74|B76|B77|B78|MD11|DC10|IL96|IL86|L101|A400|C17)/
 const TURBOPROP = /^(AT[4-7]|DH8|DHC|SF34|JS[0-9]|B190|F50|E120|C208|A748|SB20|D328|L410|BE[0-9]|PC12|SW4|SH36|AN2|AN24|AN26|Y12|MA60|DO28)/
 const REGIONAL = /^(CRJ|E13|E14|E17|E75|E19|E29|ERJ|F70|F100|B46|RJ|AJ27|SU95)/
@@ -60,7 +70,8 @@ function defaultType(km: number, rand: () => number): string {
 // ---------------------------------------------------------------- prepared routes
 
 export interface PreparedRoute {
-  index: number
+  /** stable key for this route direction (seeds its daily random draw) */
+  key: string
   airline: number
   dep: string
   arr: string
@@ -95,50 +106,72 @@ export function prepareRoutes(data: SimData): PreparedRoute[] {
     degree.set(b, (degree.get(b) ?? 0) + 1)
   }
   const gulf = new Set(prof.banks.gulfHubs?.airports ?? [])
-  const out: PreparedRoute[] = []
-  routes.routes.forEach(([airline, dep, arr, types], index) => {
-    const a = airports[dep]
-    const b = airports[arr]
-    if (!a || !b) return
-    const km = distanceKm(a[4], a[5], b[4], b[5])
-    if (km < SIM_CONFIG.minRouteKm) return
-    const size = ((degree.get(dep) ?? 1) * (degree.get(arr) ?? 1)) ** SIM_CONFIG.sizeExponent
-    const scale = data.calibration?.scale ?? SIM_CONFIG.defaultScale
-    const regional = data.calibration?.countryMultipliers[a[3]] ?? 1
-    const soften = data.calibration?.distanceSoftenKm ?? SIM_CONFIG.distanceSoftenKm
-    const cap = km >= prof.longHaulFromKm ? SIM_CONFIG.maxDailyLongHaul : SIM_CONFIG.maxDailyPerRoute
-    const baseDaily = Math.min(cap, (scale * regional * size) / (1 + km / soften))
-    const gA = seasonGroup(a[3], a[4], a[5])
-    const gB = seasonGroup(b[3], b[4], b[5])
+  const scale = data.calibration?.scale ?? SIM_CONFIG.defaultScale
+  const soften = data.calibration?.distanceSoftenKm ?? SIM_CONFIG.distanceSoftenKm
+  const mult = (country: string) => data.calibration?.countryMultipliers[country] ?? 1
 
-    // Departure-time pattern.
-    let profile = km >= prof.longHaulFromKm ? prof.longHaul : prof.shortHaul
-    if (km >= prof.longHaulFromKm) {
-      const banks = prof.banks
-      if (gulf.has(dep) && banks.gulfHubs) profile = bankProfile(banks.gulfHubs.hours)
-      else if (gA === 'europe' && gB === 'northAmerica' && banks.europeToNorthAmerica) profile = bankProfile(banks.europeToNorthAmerica.hours)
-      else if (gA === 'northAmerica' && gB === 'europe' && banks.northAmericaToEurope) profile = bankProfile(banks.northAmericaToEurope.hours)
-      else if (isAsia(a[4], a[5]) && gB === 'northAmerica' && banks.asiaToNorthAmerica) profile = bankProfile(banks.asiaToNorthAmerica.hours)
-      else if (gA === 'northAmerica' && isAsia(b[4], b[5]) && banks.northAmericaToAsia) profile = bankProfile(banks.northAmericaToAsia.hours)
-      else if (isAsia(a[4], a[5]) && gB === 'europe' && banks.asiaToEurope) profile = bankProfile(banks.asiaToEurope.hours)
-    }
-    out.push({
-      index,
-      airline,
-      dep,
-      arr,
-      depLat: a[4],
-      depLon: a[5],
-      arrLat: b[4],
-      arrLon: b[5],
-      km,
-      types: types ? types.split(' ') : [],
-      baseDaily,
-      group: gA,
-      profile,
-      depTz: a[6],
-    })
+  // Airlines fly their routes both ways, but the 2014 data sometimes lists only one
+  // direction. Merge each airline's A->B and B->A into one pair (types combined) and
+  // give both directions the same frequency.
+  const pairs = new Map<string, { index: number; airline: number; dep: string; arr: string; types: Set<string> }>()
+  routes.routes.forEach(([airline, dep, arr, types], index) => {
+    const k = dep < arr ? `${airline}|${dep}|${arr}` : `${airline}|${arr}|${dep}`
+    let p = pairs.get(k)
+    if (!p) pairs.set(k, (p = { index, airline, dep, arr, types: new Set() }))
+    if (types) for (const t of types.split(' ')) p.types.add(t)
   })
+
+  const out: PreparedRoute[] = []
+  for (const pair of pairs.values()) {
+    const a = airports[pair.dep]
+    const b = airports[pair.arr]
+    if (!a || !b) continue
+    const km = distanceKm(a[4], a[5], b[4], b[5])
+    if (km < SIM_CONFIG.minRouteKm) continue
+    const size = ((degree.get(pair.dep) ?? 1) * (degree.get(pair.arr) ?? 1)) ** SIM_CONFIG.sizeExponent
+    // Regional calibration: both ends count equally (geometric mean), so a route has the
+    // same frequency in both directions.
+    const regional = Math.sqrt(mult(a[3]) * mult(b[3]))
+    const corridor = corridorOf({ country: a[3], lat: a[4], lon: a[5] }, { country: b[3], lat: b[4], lon: b[5] })
+    const corridorMult = corridor ? (data.calibration?.corridorMultipliers?.[corridor] ?? 1) : 1
+    const cap = km >= prof.longHaulFromKm ? SIM_CONFIG.maxDailyLongHaul : SIM_CONFIG.maxDailyPerRoute
+    const baseDaily = Math.min(cap, (scale * regional * corridorMult * size) / (1 + km / soften))
+    const types = [...pair.types]
+    for (const [dep, arr, A, B, dir] of [
+      [pair.dep, pair.arr, a, b, ''],
+      [pair.arr, pair.dep, b, a, 'r'],
+    ] as const) {
+      const gA = seasonGroup(A[3], A[4], A[5])
+      const gB = seasonGroup(B[3], B[4], B[5])
+      // Departure-time pattern.
+      let profile = km >= prof.longHaulFromKm ? prof.longHaul : prof.shortHaul
+      if (km >= prof.longHaulFromKm) {
+        const banks = prof.banks
+        if (gulf.has(dep) && banks.gulfHubs) profile = bankProfile(banks.gulfHubs.hours)
+        else if (gA === 'europe' && gB === 'northAmerica' && banks.europeToNorthAmerica) profile = bankProfile(banks.europeToNorthAmerica.hours)
+        else if (gA === 'northAmerica' && gB === 'europe' && banks.northAmericaToEurope) profile = bankProfile(banks.northAmericaToEurope.hours)
+        else if (isAsia(A[4], A[5]) && gB === 'northAmerica' && banks.asiaToNorthAmerica) profile = bankProfile(banks.asiaToNorthAmerica.hours)
+        else if (gA === 'northAmerica' && isAsia(B[4], B[5]) && banks.northAmericaToAsia) profile = bankProfile(banks.northAmericaToAsia.hours)
+        else if (isAsia(A[4], A[5]) && gB === 'europe' && banks.asiaToEurope) profile = bankProfile(banks.asiaToEurope.hours)
+      }
+      out.push({
+        key: `${pair.index}${dir}`,
+        airline: pair.airline,
+        dep,
+        arr,
+        depLat: A[4],
+        depLon: A[5],
+        arrLat: B[4],
+        arrLon: B[5],
+        km,
+        types,
+        baseDaily,
+        group: gA,
+        profile,
+        depTz: A[6],
+      })
+    }
+  }
   return out
 }
 
@@ -190,7 +223,7 @@ export function buildDay(prepared: PreparedRoute[], data: SimData, dateKey: stri
   for (let i = 0; i < prepared.length; i++) {
     const r = prepared[i]
     const mf = data.model.monthly[r.group]?.factors[month] ?? 1
-    const rand = rng(hash(`${SIM_CONFIG.seed}|${dateKey}|${r.index}`))
+    const rand = rng(hash(`${SIM_CONFIG.seed}|${dateKey}|${r.key}`))
     const n = poisson(r.baseDaily * mf * wf, rand)
     if (!n) continue
     const localMidnightUtc = dayUtc - tzOffsetMinutes(r.depTz, dateKey) * 60_000
