@@ -12,10 +12,15 @@ export interface Settings {
 
 const DEFAULTS: Settings = { units: 'aviation', simTraffic: true, simShowAreas: false }
 const KEY = 'yun.settings'
+/** Bump to reset settings whose default changed (2: simulated traffic on by default). */
+const VERSION = 2
 
 function load(): Settings {
   try {
-    return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }
+    const stored = JSON.parse(localStorage.getItem(KEY) ?? '{}')
+    if ((stored.v ?? 1) < 2) delete stored.simTraffic
+    delete stored.v
+    return { ...DEFAULTS, ...stored }
   } catch {
     return DEFAULTS
   }
@@ -26,7 +31,7 @@ export function useSettings() {
   const [settings, setSettings] = useState<Settings>(load)
   useEffect(() => {
     try {
-      localStorage.setItem(KEY, JSON.stringify(settings))
+      localStorage.setItem(KEY, JSON.stringify({ ...settings, v: VERSION }))
     } catch {
       /* storage unavailable: settings just won't persist */
     }

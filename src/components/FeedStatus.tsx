@@ -63,11 +63,21 @@ export default function FeedStatus({ count, simulated, stats, error, now, synthe
       title={stats && !synthetic ? sourceSummary(stats, now) : undefined}
     >
       <span className="dot" />
-      <strong>{count.toLocaleString()}</strong> aircraft
-      {simulated > 0 && (
-        <span className="sim-count" title="Simulated traffic: illustrative flights filling coverage gaps (not live data)">
-          {' '}+ {simulated.toLocaleString()} simulated
-        </span>
+      {simulated > 0 ? (
+        <>
+          <strong>{(count + simulated).toLocaleString()}</strong> aircraft
+          <span className="dim">
+            ({count.toLocaleString()} live{' '}
+            <span className="sim-count" title="Simulated traffic: illustrative flights filling coverage gaps (not live data)">
+              + {simulated.toLocaleString()} simulated
+            </span>
+            )
+          </span>
+        </>
+      ) : (
+        <>
+          <strong>{count.toLocaleString()}</strong> aircraft
+        </>
       )}
       <span className="dim"> · {detail}</span>
     </div>

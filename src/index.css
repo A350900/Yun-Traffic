@@ -39,17 +39,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
   z-index: 10;
   height: var(--topbar-h);
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  padding: 0 16px 0 20px;
+  gap: 20px;
+  padding: 0 16px 0 16px;
   background: var(--bar);
   border-bottom: 1px solid var(--border);
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
 }
 .topbar-right { justify-self: end; display: flex; align-items: center; gap: 6px; }
 
-.brand { display: block; line-height: 0; }
+.brand { display: block; line-height: 0; padding-right: 20px; border-right: 1px solid var(--border); }
 .brand img { height: 50px; width: auto; }
 
 /* World clocks: extra clocks wrap onto a hidden second row when space runs out,
@@ -204,10 +204,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* ---------- Small screens ---------- */
 @media (max-width: 860px) {
   :root { --topbar-h: 56px; }
-  .topbar { grid-template-columns: auto 1fr auto; padding: 0 8px 0 12px; }
-  .brand { grid-column: 2; justify-self: center; }
+  .topbar { gap: 12px; padding: 0 8px 0 12px; }
+  .brand { padding-right: 12px; }
   .brand img { height: 38px; }
-  .clocks { max-width: 150px; }
   .search { width: 40px; padding: 0; justify-content: center; }
   .search input, .search kbd { display: none; }
   .map-controls { right: 12px; }
@@ -215,7 +214,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @media (max-width: 560px) {
   .clocks { display: none; }
   .topbar { grid-template-columns: 1fr auto; }
-  .brand { grid-column: 1; justify-self: start; }
+  .brand { border-right: 0; padding-right: 0; justify-self: start; }
   .dock-wrap { left: 12px; right: 12px; transform: none; bottom: 12px; }
   .dock { justify-content: space-between; }
   .popover { left: 0; right: 0; width: auto; }

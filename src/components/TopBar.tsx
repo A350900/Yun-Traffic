@@ -64,11 +64,11 @@ function WorldClocks() {
 function TopBar() {
   return (
     <header className="topbar">
-      <WorldClocks />
-
       <a className="brand" href="/" aria-label="Yún Traffic home">
         <img src={THEMES[ACTIVE_THEME].logo} alt="Yún Traffic — Live Flight Tracking" />
       </a>
+
+      <WorldClocks />
 
       <div className="topbar-right">
         <label className="search">
