@@ -1,74 +1,718 @@
 {
-  "_about": "Simulated traffic: freighter routes. The passenger route data (OpenFlights) has no cargo flights, but freighters are a big part of traffic over the North Pacific, most of it via Anchorage (PANC). Each route is flown both ways; 'daily' is flights per day in each direction. Estimates from typical 2024-25 freighter schedules; not calibrated, edit freely.",
+  "_about": "Simulated traffic: freighter routes. The passenger route data (OpenFlights) has no cargo flights, but freighters are a big part of traffic over the North Pacific, about half via Anchorage (PANC), the rest nonstop between Asia and US hubs (much of it e-commerce freight from China since 2023). Each route is flown both ways; 'daily' is flights per day in each direction. Estimates from typical 2024-25 freighter schedules; not calibrated, edit freely.",
   "airlines": [
-    ["FDX", "FX", "FedEx Express", "United States"],
-    ["UPS", "5X", "UPS Airlines", "United States"],
-    ["GTI", "5Y", "Atlas Air", "United States"],
-    ["CKS", "K4", "Kalitta Air", "United States"],
-    ["PAC", "PO", "Polar Air Cargo", "United States"],
-    ["KAL", "KE", "Korean Air Cargo", "South Korea"],
-    ["AAR", "OZ", "Asiana Cargo", "South Korea"],
-    ["CAL", "CI", "China Airlines Cargo", "Taiwan"],
-    ["EVA", "BR", "EVA Air Cargo", "Taiwan"],
-    ["CPA", "CX", "Cathay Cargo", "Hong Kong"],
-    ["CKK", "CK", "China Cargo Airlines", "China"],
-    ["CAO", "CA", "Air China Cargo", "China"],
-    ["NCA", "KZ", "Nippon Cargo Airlines", "Japan"]
+    [
+      "FDX",
+      "FX",
+      "FedEx Express",
+      "United States"
+    ],
+    [
+      "UPS",
+      "5X",
+      "UPS Airlines",
+      "United States"
+    ],
+    [
+      "GTI",
+      "5Y",
+      "Atlas Air",
+      "United States"
+    ],
+    [
+      "CKS",
+      "K4",
+      "Kalitta Air",
+      "United States"
+    ],
+    [
+      "PAC",
+      "PO",
+      "Polar Air Cargo",
+      "United States"
+    ],
+    [
+      "KAL",
+      "KE",
+      "Korean Air Cargo",
+      "South Korea"
+    ],
+    [
+      "AAR",
+      "OZ",
+      "Asiana Cargo",
+      "South Korea"
+    ],
+    [
+      "CAL",
+      "CI",
+      "China Airlines Cargo",
+      "Taiwan"
+    ],
+    [
+      "EVA",
+      "BR",
+      "EVA Air Cargo",
+      "Taiwan"
+    ],
+    [
+      "CPA",
+      "CX",
+      "Cathay Cargo",
+      "Hong Kong"
+    ],
+    [
+      "CKK",
+      "CK",
+      "China Cargo Airlines",
+      "China"
+    ],
+    [
+      "CAO",
+      "CA",
+      "Air China Cargo",
+      "China"
+    ],
+    [
+      "NCA",
+      "KZ",
+      "Nippon Cargo Airlines",
+      "Japan"
+    ],
+    [
+      "CSS",
+      "O3",
+      "SF Airlines",
+      "China"
+    ],
+    [
+      "CSN",
+      "CZ",
+      "China Southern Cargo",
+      "China"
+    ],
+    [
+      "CES",
+      "MU",
+      "China Eastern Cargo",
+      "China"
+    ]
   ],
-  "aircraft": { "B748": "Boeing 747-8F", "B744": "Boeing 747-400F", "B77L": "Boeing 777F", "MD11": "McDonnell Douglas MD-11F" },
+  "aircraft": {
+    "B748": "Boeing 747-8F",
+    "B744": "Boeing 747-400F",
+    "B77L": "Boeing 777F",
+    "MD11": "McDonnell Douglas MD-11F"
+  },
   "routes": [
-    ["FDX", "PANC", "ZGGG", "B77L MD11", 3],
-    ["FDX", "PANC", "RKSI", "B77L MD11", 2],
-    ["FDX", "PANC", "RJAA", "MD11 B77L", 2],
-    ["FDX", "PANC", "ZSPD", "B77L", 2],
-    ["FDX", "PANC", "VHHH", "MD11", 1],
-    ["FDX", "PANC", "RCTP", "MD11", 1],
-    ["FDX", "PANC", "KMEM", "MD11 B77L", 4],
-    ["FDX", "PANC", "KLAX", "MD11", 1],
-    ["FDX", "PANC", "KONT", "MD11", 1],
-    ["UPS", "PANC", "ZGSZ", "B748 MD11", 2],
-    ["UPS", "PANC", "VHHH", "B748 MD11", 2],
-    ["UPS", "PANC", "RKSI", "B744 MD11", 1],
-    ["UPS", "PANC", "RJAA", "MD11", 1],
-    ["UPS", "PANC", "ZSPD", "B748", 1],
-    ["UPS", "PANC", "RCTP", "MD11", 1],
-    ["UPS", "PANC", "KSDF", "B748 MD11", 4],
-    ["UPS", "PANC", "KONT", "B744 MD11", 2],
-    ["GTI", "PANC", "ZSPD", "B744 B748", 1],
-    ["GTI", "PANC", "VHHH", "B744 B748", 1],
-    ["GTI", "PANC", "RKSI", "B744", 1],
-    ["GTI", "PANC", "RJAA", "B744", 1],
-    ["GTI", "PANC", "KCVG", "B744 B748", 2],
-    ["GTI", "PANC", "KORD", "B744", 1],
-    ["CKS", "PANC", "RKSI", "B744 B77L", 1],
-    ["CKS", "PANC", "VHHH", "B744", 1],
-    ["CKS", "PANC", "ZSPD", "B744", 1],
-    ["CKS", "PANC", "KORD", "B744", 1],
-    ["CKS", "PANC", "KLAX", "B744", 1],
-    ["PAC", "PANC", "ZSPD", "B77L B748", 1],
-    ["PAC", "PANC", "VHHH", "B77L", 1],
-    ["PAC", "PANC", "KLAX", "B77L", 1],
-    ["KAL", "RKSI", "PANC", "B748 B77L", 3],
-    ["KAL", "PANC", "KORD", "B77L", 1],
-    ["KAL", "PANC", "KJFK", "B748", 1],
-    ["KAL", "PANC", "KLAX", "B77L", 1],
-    ["KAL", "RKSI", "KLAX", "B77L", 1],
-    ["AAR", "RKSI", "PANC", "B744", 2],
-    ["CAL", "RCTP", "PANC", "B744 B77L", 3],
-    ["CAL", "PANC", "KLAX", "B77L", 1],
-    ["CAL", "PANC", "KORD", "B744", 1],
-    ["CAL", "RCTP", "KLAX", "B77L", 1],
-    ["EVA", "RCTP", "PANC", "B77L", 2],
-    ["EVA", "PANC", "KORD", "B77L", 1],
-    ["CPA", "VHHH", "PANC", "B748 B744", 3],
-    ["CPA", "PANC", "KORD", "B748", 1],
-    ["CPA", "PANC", "KLAX", "B748", 1],
-    ["CPA", "VHHH", "KLAX", "B748", 1],
-    ["CKK", "ZSPD", "PANC", "B77L B744", 2],
-    ["CKK", "PANC", "KORD", "B77L", 1],
-    ["CAO", "ZBAA", "PANC", "B77L B744", 1],
-    ["CAO", "ZSPD", "PANC", "B77L", 1],
-    ["NCA", "RJAA", "PANC", "B748", 2],
-    ["NCA", "PANC", "KORD", "B748", 1]
+    [
+      "FDX",
+      "PANC",
+      "ZGGG",
+      "B77L MD11",
+      3
+    ],
+    [
+      "FDX",
+      "PANC",
+      "RKSI",
+      "B77L MD11",
+      2
+    ],
+    [
+      "FDX",
+      "PANC",
+      "RJAA",
+      "MD11 B77L",
+      2
+    ],
+    [
+      "FDX",
+      "PANC",
+      "ZSPD",
+      "B77L",
+      2
+    ],
+    [
+      "FDX",
+      "PANC",
+      "VHHH",
+      "MD11",
+      1
+    ],
+    [
+      "FDX",
+      "PANC",
+      "RCTP",
+      "MD11",
+      1
+    ],
+    [
+      "FDX",
+      "PANC",
+      "KMEM",
+      "MD11 B77L",
+      4
+    ],
+    [
+      "FDX",
+      "PANC",
+      "KLAX",
+      "MD11",
+      1
+    ],
+    [
+      "FDX",
+      "PANC",
+      "KONT",
+      "MD11",
+      1
+    ],
+    [
+      "UPS",
+      "PANC",
+      "ZGSZ",
+      "B748 MD11",
+      2
+    ],
+    [
+      "UPS",
+      "PANC",
+      "VHHH",
+      "B748 MD11",
+      2
+    ],
+    [
+      "UPS",
+      "PANC",
+      "RKSI",
+      "B744 MD11",
+      1
+    ],
+    [
+      "UPS",
+      "PANC",
+      "RJAA",
+      "MD11",
+      1
+    ],
+    [
+      "UPS",
+      "PANC",
+      "ZSPD",
+      "B748",
+      1
+    ],
+    [
+      "UPS",
+      "PANC",
+      "RCTP",
+      "MD11",
+      1
+    ],
+    [
+      "UPS",
+      "PANC",
+      "KSDF",
+      "B748 MD11",
+      4
+    ],
+    [
+      "UPS",
+      "PANC",
+      "KONT",
+      "B744 MD11",
+      2
+    ],
+    [
+      "GTI",
+      "PANC",
+      "ZSPD",
+      "B744 B748",
+      1
+    ],
+    [
+      "GTI",
+      "PANC",
+      "VHHH",
+      "B744 B748",
+      1
+    ],
+    [
+      "GTI",
+      "PANC",
+      "RKSI",
+      "B744",
+      1
+    ],
+    [
+      "GTI",
+      "PANC",
+      "RJAA",
+      "B744",
+      1
+    ],
+    [
+      "GTI",
+      "PANC",
+      "KCVG",
+      "B744 B748",
+      2
+    ],
+    [
+      "GTI",
+      "PANC",
+      "KORD",
+      "B744",
+      1
+    ],
+    [
+      "CKS",
+      "PANC",
+      "RKSI",
+      "B744 B77L",
+      1
+    ],
+    [
+      "CKS",
+      "PANC",
+      "VHHH",
+      "B744",
+      1
+    ],
+    [
+      "CKS",
+      "PANC",
+      "ZSPD",
+      "B744",
+      1
+    ],
+    [
+      "CKS",
+      "PANC",
+      "KORD",
+      "B744",
+      1
+    ],
+    [
+      "CKS",
+      "PANC",
+      "KLAX",
+      "B744",
+      1
+    ],
+    [
+      "PAC",
+      "PANC",
+      "ZSPD",
+      "B77L B748",
+      1
+    ],
+    [
+      "PAC",
+      "PANC",
+      "VHHH",
+      "B77L",
+      1
+    ],
+    [
+      "PAC",
+      "PANC",
+      "KLAX",
+      "B77L",
+      1
+    ],
+    [
+      "KAL",
+      "RKSI",
+      "PANC",
+      "B748 B77L",
+      3
+    ],
+    [
+      "KAL",
+      "PANC",
+      "KORD",
+      "B77L",
+      1
+    ],
+    [
+      "KAL",
+      "PANC",
+      "KJFK",
+      "B748",
+      1
+    ],
+    [
+      "KAL",
+      "PANC",
+      "KLAX",
+      "B77L",
+      1
+    ],
+    [
+      "KAL",
+      "RKSI",
+      "KLAX",
+      "B77L",
+      1
+    ],
+    [
+      "AAR",
+      "RKSI",
+      "PANC",
+      "B744",
+      2
+    ],
+    [
+      "CAL",
+      "RCTP",
+      "PANC",
+      "B744 B77L",
+      3
+    ],
+    [
+      "CAL",
+      "PANC",
+      "KLAX",
+      "B77L",
+      1
+    ],
+    [
+      "CAL",
+      "PANC",
+      "KORD",
+      "B744",
+      1
+    ],
+    [
+      "CAL",
+      "RCTP",
+      "KLAX",
+      "B77L",
+      1
+    ],
+    [
+      "EVA",
+      "RCTP",
+      "PANC",
+      "B77L",
+      2
+    ],
+    [
+      "EVA",
+      "PANC",
+      "KORD",
+      "B77L",
+      1
+    ],
+    [
+      "CPA",
+      "VHHH",
+      "PANC",
+      "B748 B744",
+      3
+    ],
+    [
+      "CPA",
+      "PANC",
+      "KORD",
+      "B748",
+      1
+    ],
+    [
+      "CPA",
+      "PANC",
+      "KLAX",
+      "B748",
+      1
+    ],
+    [
+      "CPA",
+      "VHHH",
+      "KLAX",
+      "B748",
+      1
+    ],
+    [
+      "CKK",
+      "ZSPD",
+      "PANC",
+      "B77L B744",
+      2
+    ],
+    [
+      "CKK",
+      "PANC",
+      "KORD",
+      "B77L",
+      1
+    ],
+    [
+      "CAO",
+      "ZBAA",
+      "PANC",
+      "B77L B744",
+      1
+    ],
+    [
+      "CAO",
+      "ZSPD",
+      "PANC",
+      "B77L",
+      1
+    ],
+    [
+      "NCA",
+      "RJAA",
+      "PANC",
+      "B748",
+      2
+    ],
+    [
+      "NCA",
+      "PANC",
+      "KORD",
+      "B748",
+      1
+    ],
+    [
+      "CPA",
+      "VHHH",
+      "KLAX",
+      "B748 B77L",
+      2
+    ],
+    [
+      "CPA",
+      "VHHH",
+      "KORD",
+      "B748",
+      1
+    ],
+    [
+      "CPA",
+      "VHHH",
+      "KONT",
+      "B77L",
+      1
+    ],
+    [
+      "CAL",
+      "RCTP",
+      "KONT",
+      "B77L B744",
+      2
+    ],
+    [
+      "CAL",
+      "RCTP",
+      "KSFO",
+      "B77L",
+      1
+    ],
+    [
+      "CAL",
+      "RCTP",
+      "KORD",
+      "B744",
+      1
+    ],
+    [
+      "EVA",
+      "RCTP",
+      "KLAX",
+      "B77L",
+      1
+    ],
+    [
+      "EVA",
+      "RCTP",
+      "KSFO",
+      "B77L",
+      1
+    ],
+    [
+      "EVA",
+      "RCTP",
+      "KONT",
+      "B77L",
+      1
+    ],
+    [
+      "KAL",
+      "RKSI",
+      "KSFO",
+      "B77L",
+      1
+    ],
+    [
+      "KAL",
+      "RKSI",
+      "KORD",
+      "B748",
+      1
+    ],
+    [
+      "AAR",
+      "RKSI",
+      "KLAX",
+      "B744",
+      1
+    ],
+    [
+      "CKK",
+      "ZSPD",
+      "KLAX",
+      "B77L",
+      1
+    ],
+    [
+      "CKK",
+      "ZSPD",
+      "KORD",
+      "B77L",
+      1
+    ],
+    [
+      "CSN",
+      "ZGGG",
+      "KLAX",
+      "B77L",
+      1
+    ],
+    [
+      "CSN",
+      "ZGGG",
+      "KORD",
+      "B77L",
+      1
+    ],
+    [
+      "CES",
+      "ZSPD",
+      "KLAX",
+      "B77L",
+      1
+    ],
+    [
+      "CSS",
+      "ZGSZ",
+      "KONT",
+      "B748 B744",
+      1
+    ],
+    [
+      "CSS",
+      "ZSPD",
+      "KORD",
+      "B748",
+      1
+    ],
+    [
+      "CAO",
+      "ZBAA",
+      "KLAX",
+      "B77L",
+      1
+    ],
+    [
+      "FDX",
+      "RKSI",
+      "KOAK",
+      "MD11 B77L",
+      1
+    ],
+    [
+      "FDX",
+      "RJAA",
+      "KOAK",
+      "MD11",
+      1
+    ],
+    [
+      "FDX",
+      "ZGGG",
+      "KMEM",
+      "B77L",
+      1
+    ],
+    [
+      "UPS",
+      "VHHH",
+      "KONT",
+      "B748",
+      1
+    ],
+    [
+      "UPS",
+      "ZGSZ",
+      "KONT",
+      "MD11",
+      1
+    ],
+    [
+      "GTI",
+      "ZSPD",
+      "KLAX",
+      "B748",
+      1
+    ],
+    [
+      "GTI",
+      "VHHH",
+      "KLAX",
+      "B744",
+      1
+    ],
+    [
+      "GTI",
+      "RCTP",
+      "KLAX",
+      "B744",
+      1
+    ],
+    [
+      "GTI",
+      "ZGSZ",
+      "KORD",
+      "B744",
+      1
+    ],
+    [
+      "CKS",
+      "VHHH",
+      "KLAX",
+      "B744",
+      1
+    ],
+    [
+      "CKS",
+      "ZSPD",
+      "KORD",
+      "B744",
+      1
+    ],
+    [
+      "PAC",
+      "VHHH",
+      "KLAX",
+      "B77L",
+      1
+    ],
+    [
+      "NCA",
+      "RJAA",
+      "KLAX",
+      "B748",
+      1
+    ],
+    [
+      "NCA",
+      "RJAA",
+      "KORD",
+      "B748",
+      1
+    ]
   ]
 }

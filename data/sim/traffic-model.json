@@ -211,8 +211,13 @@
         "hours": [
           [
             15,
+            20,
+            1.6
+          ],
+          [
+            20,
             24,
-            1
+            0.8
           ],
           [
             10,
@@ -226,7 +231,7 @@
           ]
         ],
         "floor": 0.15,
-        "basis": "evening departures from Japan/Korea/Taiwan/China, daytime departures from Seoul/Shanghai/Hong Kong, a few after midnight; freighters at all hours"
+        "basis": "strong mid-afternoon to early-evening wave (Tokyo/Seoul/Taipei departures ~15:00-20:00 local, arriving on the US west coast in the morning), later departures from Hong Kong/China/Manila, daytime departures from Seoul/Shanghai, a few after midnight; freighters at all hours"
       },
       "northAmericaToAsia": {
         "hours": [
@@ -375,65 +380,65 @@
     }
   },
   "pairDailyFlights": {
-    "_note": "Average daily passenger flights (both directions) between two countries, for pairs where the 2014 route data is far from today (e.g. China-US flights were cut sharply after 2020). Keys are ISO country codes in alphabetical order. Estimates from 2024-25 airline schedules (rounded); edit freely, then run npm run sim:calibrate.",
+    "_note": "Average daily passenger flights (both directions) between two countries, for pairs where the 2014 route data is far from today (e.g. China-US flights were cut sharply after 2020). Keys are ISO country codes in alphabetical order. Estimates from 2024-25 airline schedules (rounded); edit freely, then run npm run sim:calibrate. Pacific pairs include ~25% on top of airline schedules for charters, business jets and military flights that live trackers also show (tuned against a live-tracker view of the North Pacific).",
     "JP-US": {
-      "flights": 160,
-      "basis": "estimate: US mainland-Japan ~112 (United, Delta, American, ANA, JAL, ZIPAIR) + Hawaii-Japan ~48"
+      "flights": 238,
+      "basis": "estimate: US mainland-Japan ~130 (United, Delta, American, ANA, JAL, ZIPAIR, Hawaiian) + Hawaii-Japan ~60"
     },
     "CN-US": {
-      "flights": 24,
-      "basis": "estimate: ~85 round trips/week under the 2024-25 US-China caps"
+      "flights": 38,
+      "basis": "estimate: ~100 round trips/week under the 2025 US-China caps, plus charters"
     },
     "KR-US": {
-      "flights": 60,
+      "flights": 88,
       "basis": "estimate: Korean Air, Asiana, Delta, United, Air Premia"
     },
     "TW-US": {
-      "flights": 60,
+      "flights": 88,
       "basis": "estimate: EVA Air, China Airlines, Starlux, United, Delta"
     },
     "HK-US": {
-      "flights": 30,
+      "flights": 42,
       "basis": "estimate: Cathay Pacific, United"
     },
     "PH-US": {
-      "flights": 16,
+      "flights": 25,
       "basis": "estimate: Philippine Airlines, United"
     },
     "AU-US": {
-      "flights": 40,
+      "flights": 50,
       "basis": "estimate: Qantas, United, American, Delta"
     },
     "NZ-US": {
-      "flights": 14,
+      "flights": 18,
       "basis": "estimate: Air New Zealand, United, American, Delta"
     },
     "SG-US": {
-      "flights": 8,
+      "flights": 10,
       "basis": "estimate: Singapore Airlines, United"
     },
     "VN-US": {
-      "flights": 4,
+      "flights": 5,
       "basis": "estimate: Vietnam Airlines"
     },
     "CA-JP": {
-      "flights": 14,
+      "flights": 18,
       "basis": "estimate: Air Canada, ANA, JAL"
     },
     "CA-KR": {
-      "flights": 8,
+      "flights": 10,
       "basis": "estimate: Air Canada, Korean Air"
     },
     "CA-CN": {
-      "flights": 8,
+      "flights": 10,
       "basis": "estimate: Air China, China Eastern, China Southern, Air Canada"
     },
     "CA-HK": {
-      "flights": 6,
+      "flights": 8,
       "basis": "estimate: Cathay Pacific, Air Canada"
     },
     "CA-TW": {
-      "flights": 6,
+      "flights": 8,
       "basis": "estimate: EVA Air, China Airlines, Air Canada"
     }
   }
