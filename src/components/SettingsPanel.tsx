@@ -25,6 +25,19 @@ export default function SettingsPanel({ settings, onChange }: Props) {
         ))}
       </div>
       <p className="settings-hint">{active?.hint}</p>
+
+      {/* simulated traffic */}
+      <h3 className="settings-section">Simulated traffic</h3>
+      <label className="toggle-row">
+        <span>
+          <span className="toggle-label">Fill coverage gaps (beta)</span>
+          <span className="toggle-hint">
+            Illustrative flights on real airline routes where live data can't see (oceans, China, Africa…). Drawn as hollow outlines. Not live data.
+          </span>
+        </span>
+        <input type="checkbox" role="switch" checked={settings.simTraffic} onChange={(e) => onChange({ ...settings, simTraffic: e.target.checked })} />
+        <span className="switch" aria-hidden="true" />
+      </label>
     </div>
   )
 }

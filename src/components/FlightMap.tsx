@@ -14,6 +14,7 @@ import type { SelectionStore } from '../flights/selection'
 import { addPathLayers, clearPath, updatePath } from '../flights/pathLayer'
 import { extrapolate } from '../flights/position'
 import { F } from '../../shared/wire'
+import type { SimController } from '../sim/client' // simulated traffic
 
 const theme = THEMES[ACTIVE_THEME]
 setWorkerUrl(workerUrl)
@@ -65,6 +66,9 @@ interface Props {
   dayNight: boolean
   radar: RadarController
   selection: SelectionStore
+  /** simulated traffic */
+  sim: SimController
+  simEnabled: boolean
 }
 
 /** Rough radius of the visible area in nautical miles. */
@@ -76,12 +80,14 @@ function focusFor(map: MLMap): FocusHint | null {
   return { lat: c.lat, lon: c.lng, radiusNm: Math.max(radiusNm, 25) }
 }
 
-function FlightMap({ onSelect, onFeed, dayNight, radar, selection }: Props) {
+function FlightMap({ onSelect, onFeed, dayNight, radar, selection, sim, simEnabled }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
   const onSelectRef = useRef(onSelect)
   const onFeedRef = useRef(onFeed)
   const dayNightRef = useRef(dayNight)
+  const simEnabledRef = useRef(simEnabled) // simulated traffic
+  simEnabledRef.current = simEnabled
   onSelectRef.current = onSelect
   onFeedRef.current = onFeed
   dayNightRef.current = dayNight
@@ -179,9 +185,15 @@ function FlightMap({ onSelect, onFeed, dayNight, radar, selection }: Props) {
 
     // Every 250 ms: update at most one group, and only when it would visibly
     // change something. Groups come due a fraction of the interval apart.
+    let simForce = false // simulated traffic: refresh after the view changes
     const tick = () => {
       if (document.hidden || !map.getSource('aircraft-0')) return
       if (selection.getState().hex && performance.now() - lastPathDraw >= 1000) drawSelection()
+      // simulated traffic: computed in a worker; held during gestures when zoomed out (like live)
+      if (sim.enabled && !(map.isMoving() && !viewWindow(map))) {
+        sim.tick({ now: now(), view: viewWindow(map), interval: redrawInterval(map), force: simForce, aircraft: feed.state.aircraft.values() })
+        simForce = false
+      }
       if (refreshAll) return drawAllProgressively()
       if (map.isMoving()) {
         // Panned past the area we sent aircraft for: fill it in right away.
@@ -203,6 +215,7 @@ function FlightMap({ onSelect, onFeed, dayNight, radar, selection }: Props) {
     // After the view changes, redraw at once if we panned beyond the area we
     // sent aircraft for, or zoomed into a level where culling changes.
     map.on('moveend', () => {
+      simForce = true // simulated traffic
       const zoomBand = Math.floor(map.getZoom())
       const culling = viewWindow(map) !== null
       if (culling !== (windows[0] !== null) || !coveredByAll() || zoomBand !== lastZoomBand) drawAllProgressively()
@@ -220,6 +233,7 @@ function FlightMap({ onSelect, onFeed, dayNight, radar, selection }: Props) {
       radar.attach(map) // above day/night, below labels and aircraft
       addAircraftLayers(map)
       addPathLayers(map, ICON_LAYERS[0]) // under the aircraft icons
+      if (simEnabledRef.current) sim.enable(map, ICON_LAYERS[0]) // simulated traffic, under live aircraft
       drawAllProgressively()
       renderTimer = window.setInterval(tick, TICK_MS)
     })
@@ -247,17 +261,25 @@ function FlightMap({ onSelect, onFeed, dayNight, radar, selection }: Props) {
       document.removeEventListener('visibilitychange', onVisible)
       unsubscribeSelection()
       radar.detach()
+      sim.disable() // simulated traffic
       feed.stop()
       map.remove()
       mapRef.current = null
     }
   }, [])
 
-
   useEffect(() => {
     const map = mapRef.current
     if (map) setDayNightVisible(map, dayNight)
   }, [dayNight])
+
+  // simulated traffic: switched on/off in Settings
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map?.getSource('aircraft-0')) return // not loaded yet: style.load handles it
+    if (simEnabled) sim.enable(map, ICON_LAYERS[0])
+    else sim.disable()
+  }, [simEnabled, sim])
 
   const locate = () => {
     const map = mapRef.current

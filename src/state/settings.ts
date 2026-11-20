@@ -4,9 +4,11 @@ export type UnitSystem = 'aviation' | 'metric' | 'imperial'
 
 export interface Settings {
   units: UnitSystem
+  /** simulated traffic (beta): fill gaps in live coverage with illustrative flights */
+  simTraffic: boolean
 }
 
-const DEFAULTS: Settings = { units: 'aviation' }
+const DEFAULTS: Settings = { units: 'aviation', simTraffic: false }
 const KEY = 'yun.settings'
 
 function load(): Settings {

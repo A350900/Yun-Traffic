@@ -7,6 +7,26 @@ export const SIM_CONFIG = {
   hideWithinNm: 40,
   /** ...and fade them in until this distance (nm). Beyond it they're fully visible. */
   fadeUntilNm: 100,
+  /** Overall opacity of simulated aircraft (live ones are 1). */
+  opacity: 0.75,
+
+  // ---------------------------------------------------------------- where to simulate
+  /**
+   * A 2° cell is "covered" (never simulated) if, at its best measured hour, live data sees at
+   * least this share of the traffic the model expects there. Receivers don't move, so a cell
+   * covered at one hour is treated as covered at all hours.
+   */
+  coveredRatio: 0.6,
+  /** Below this share the cell is a "gap" (filled fully); in between it's "partial" (difference only). */
+  gapRatio: 0.2,
+  /**
+   * Safety net: a cell where live aircraft are seen in at least this share of samples counts as
+   * covered unless it's clearly a gap (below gapRatio). Keeps the US/Europe free of simulated
+   * traffic even when the model's hourly estimate is off.
+   */
+  alwaysSeen: 0.9,
+  /** Hours where the model expects fewer aircraft than this in a cell aren't used to judge it. */
+  minExpected: 1,
 
   // ---------------------------------------------------------------- schedule model
   /**

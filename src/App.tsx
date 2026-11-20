@@ -9,6 +9,7 @@ import { useLayerSettings } from './state/layers'
 import { useSettings } from './state/settings'
 import { RadarController } from './layers/radar'
 import { SelectionStore } from './flights/selection'
+import { SimController } from './sim/client' // simulated traffic
 import { F } from '../shared/wire'
 
 const synthetic = new URLSearchParams(location.search).has('stress')
@@ -18,6 +19,7 @@ export default function App() {
   const [layers, setLayers] = useLayerSettings()
   const [settings, setSettings] = useSettings()
   const [selection] = useState(() => new SelectionStore())
+  const [sim] = useState(() => new SimController()) // simulated traffic
   const [radar] = useState(
     () => new RadarController({ visible: layers.radar, style: layers.radarStyle, opacity: layers.radarOpacity }),
   )
@@ -50,7 +52,7 @@ export default function App() {
 
   return (
     <main className="app">
-      <FlightMap onSelect={setSelected} onFeed={onFeed} dayNight={layers.dayNight} radar={radar} selection={selection} />
+      <FlightMap onSelect={setSelected} onFeed={onFeed} dayNight={layers.dayNight} radar={radar} selection={selection} sim={sim} simEnabled={settings.simTraffic} />
       <TopBar />
       {selected && (
         <FlightPanel

@@ -36,7 +36,13 @@ export interface Sample {
 export interface CellCoverage {
   /** share of samples with any live aircraft (rolling) */
   p: number
-  /** average live aircraft by UTC hour 0..23 (rolling) */
+  /** average live aircraft by UTC hour 0..23 (rolling); null = not measured yet */
+  h: (number | null)[]
+}
+
+/** As stored: every hour has a number (0 until sampled; see hourSamples). */
+interface StoredCell {
+  p: number
   h: number[]
 }
 
@@ -44,7 +50,7 @@ interface Saved {
   samples: number
   /** samples taken so far for each UTC hour */
   hourSamples: number[]
-  cells: Record<string, CellCoverage>
+  cells: Record<string, StoredCell>
   series: Sample[]
   /** airline ICAO prefix -> last day seen (YYYY-MM-DD) */
   airlines: Record<string, string>
@@ -86,25 +92,36 @@ export class SimRecorder {
    */
   coverage(): { samples: number; seed: boolean; hourSamples: number[]; cells: Record<string, CellCoverage> } {
     const own = { samples: this.data.samples, hourSamples: this.data.hourSamples }
-    if (this.data.samples >= SAMPLES_PER_DAY) return { ...own, seed: false, cells: this.data.cells }
-    let seed: Record<string, [number, number]> = {}
+    const measured = (c: StoredCell | undefined): CellCoverage => ({
+      p: c?.p ?? 0,
+      // Hours never sampled are unknown, not zero.
+      h: Array.from({ length: 24 }, (_, hr) => (this.data.hourSamples[hr] > 0 ? (c?.h[hr] ?? 0) : null)),
+    })
+    const allKeys = (extra: string[] = []) => new Set([...Object.keys(this.data.cells), ...extra])
+    if (this.data.samples >= SAMPLES_PER_DAY) {
+      const cells: Record<string, CellCoverage> = {}
+      for (const k of allKeys()) cells[k] = measured(this.data.cells[k])
+      return { ...own, seed: false, cells }
+    }
+    // Fresh install: the bundled seed fills in the hour(s) it was captured at.
+    let seed: { cells: Record<string, [number, number]>; hours?: number[] } = { cells: {} }
     try {
-      seed = (JSON.parse(readFileSync(SEED_FILE, 'utf8')) as { cells: Record<string, [number, number]> }).cells
+      seed = JSON.parse(readFileSync(SEED_FILE, 'utf8'))
     } catch {
-      return { ...own, seed: false, cells: this.data.cells }
+      /* no seed */
     }
     const w = this.data.samples / SAMPLES_PER_DAY
+    const seedHours = new Set(seed.hours ?? [])
     const cells: Record<string, CellCoverage> = {}
-    for (const k of new Set([...Object.keys(seed), ...Object.keys(this.data.cells)])) {
-      const sd = seed[k] ?? [0, 0]
-      const c = this.data.cells[k]
+    for (const k of allKeys(Object.keys(seed.cells))) {
+      const sd = seed.cells[k]
+      const c = measured(this.data.cells[k])
       cells[k] = {
-        p: sd[0] * (1 - w) + (c?.p ?? 0) * w,
-        // The seed has no hourly detail: use its average for hours we haven't sampled yet.
-        h: Array.from({ length: 24 }, (_, hr) => (this.data.hourSamples[hr] > 0 ? (c?.h[hr] ?? 0) : sd[1])),
+        p: (sd?.[0] ?? 0) * (1 - w) + c.p * w,
+        h: c.h.map((v, hr) => (v == null && seedHours.has(hr) ? (sd?.[1] ?? 0) : v)),
       }
     }
-    return { ...own, seed: true, cells }
+    return { ...own, seed: Object.keys(seed.cells).length > 0, cells }
   }
 
   series(): Sample[] {

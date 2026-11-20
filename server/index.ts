@@ -1,6 +1,6 @@
 import './env.ts'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import { createReadStream, existsSync, statSync } from 'node:fs'
+import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
 import { gzipSync } from 'node:zlib'
 import { AircraftStore } from './store.ts'
@@ -99,17 +99,34 @@ const MIME: Record<string, string> = {
   '.woff2': 'font/woff2',
 }
 
+const COMPRESSIBLE = new Set(['.html', '.js', '.mjs', '.css', '.json', '.svg', '.webmanifest'])
+/** gzip-compressed copies of static files, by path + modification time */
+const gzipCache = new Map<string, Buffer>()
+
 /** Serves the built frontend (`npm run build`) in production. */
-function serveStatic(res: ServerResponse, pathname: string) {
+function serveStatic(req: IncomingMessage, res: ServerResponse, pathname: string) {
   let file = normalize(join(DIST, decodeURIComponent(pathname)))
   if (!file.startsWith(DIST)) return res.writeHead(403).end()
   if (!existsSync(file) || statSync(file).isDirectory()) file = join(DIST, 'index.html')
   if (!existsSync(file)) return res.writeHead(404).end('Run `npm run build` first, or use `npm run dev`.')
   const immutable = file.includes(`${join(DIST, 'assets')}`)
-  res.writeHead(200, {
-    'Content-Type': MIME[extname(file)] ?? 'application/octet-stream',
+  const ext = extname(file)
+  const headers: Record<string, string> = {
+    'Content-Type': MIME[ext] ?? 'application/octet-stream',
     'Cache-Control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
-  })
+    Vary: 'Accept-Encoding',
+  }
+  // Text files compress ~5x (the simulated-traffic data most of all).
+  if (COMPRESSIBLE.has(ext) && /\bgzip\b/.test(req.headers['accept-encoding'] ?? '')) {
+    const key = `${file}|${statSync(file).mtimeMs}`
+    let gz = gzipCache.get(key)
+    if (!gz) {
+      gz = gzipSync(readFileSync(file), { level: 6 })
+      gzipCache.set(key, gz)
+    }
+    return res.writeHead(200, { ...headers, 'Content-Encoding': 'gzip' }).end(gz)
+  }
+  res.writeHead(200, headers)
   createReadStream(file).pipe(res)
 }
 
@@ -151,7 +168,7 @@ createServer((req, res) => {
   if (SIM_ENABLED && req.method === 'GET' && url.pathname === '/api/sim/coverage') return send(req, res, 200, simRecorder.coverage())
   if (SIM_ENABLED && req.method === 'GET' && url.pathname === '/api/sim/stats') return send(req, res, 200, { series: simRecorder.series() })
   if (url.pathname.startsWith('/api/')) return send(req, res, 404, { error: 'not found' })
-  serveStatic(res, url.pathname)
+  serveStatic(req, res, url.pathname)
 }).listen(PORT, () => {
   console.log(`[server] listening on http://localhost:${PORT}`)
 })
