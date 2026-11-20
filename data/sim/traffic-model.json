@@ -237,17 +237,17 @@
         "hours": [
           [
             10,
-            15,
+            18,
             1
           ],
           [
             22,
             26,
-            0.6
+            0.9
           ]
         ],
         "floor": 0.2,
-        "basis": "midday departures (US airlines, ANA/JAL) plus the late-night wave of Asian carriers from LAX/SFO/YVR (~22:00-01:30); freighters at all hours"
+        "basis": "midday to late-afternoon departures (US airlines, ANA/JAL, ~10:00-18:00) plus the late-night wave of Asian carriers from LAX/SFO/YVR (~22:00-01:30); freighters at all hours"
       },
       "gulfHubs": {
         "airports": [
@@ -277,6 +277,38 @@
           26
         ],
         "basis": "late-night departures arriving in Europe early morning"
+      },
+      "southAmericaToNorthAmerica": {
+        "hours": [
+          [
+            20,
+            25,
+            1
+          ],
+          [
+            8,
+            14,
+            0.4
+          ]
+        ],
+        "floor": 0.08,
+        "basis": "overnight flights to the US (e.g. Sao Paulo/Rio/Buenos Aires/Lima -> Miami/New York/Houston leave ~20:00-01:00), some daytime departures"
+      },
+      "northAmericaToSouthAmerica": {
+        "hours": [
+          [
+            19,
+            24,
+            1
+          ],
+          [
+            8,
+            14,
+            0.4
+          ]
+        ],
+        "floor": 0.08,
+        "basis": "evening departures from Miami/New York/Houston/Atlanta, arriving in South America in the morning; some daytime departures"
       }
     }
   },
@@ -380,65 +412,65 @@
     }
   },
   "pairDailyFlights": {
-    "_note": "Average daily passenger flights (both directions) between two countries, for pairs where the 2014 route data is far from today (e.g. China-US flights were cut sharply after 2020). Keys are ISO country codes in alphabetical order. Estimates from 2024-25 airline schedules (rounded); edit freely, then run npm run sim:calibrate. Pacific pairs include ~25% on top of airline schedules for charters, business jets and military flights that live trackers also show (tuned against a live-tracker view of the North Pacific).",
+    "_note": "Average daily passenger flights (both directions) between two countries, for pairs where the 2014 route data is far from today (e.g. China-US flights were cut sharply after 2020). Keys are ISO country codes in alphabetical order. Estimates from 2024-25 airline schedules (rounded); edit freely, then run npm run sim:calibrate. Pacific pairs include ~50% on top of airline schedules for charters, business jets and military flights that live trackers also show (tuned against a live-tracker view of the North Pacific).",
     "JP-US": {
-      "flights": 238,
+      "flights": 286,
       "basis": "estimate: US mainland-Japan ~130 (United, Delta, American, ANA, JAL, ZIPAIR, Hawaiian) + Hawaii-Japan ~60"
     },
     "CN-US": {
-      "flights": 38,
+      "flights": 46,
       "basis": "estimate: ~100 round trips/week under the 2025 US-China caps, plus charters"
     },
     "KR-US": {
-      "flights": 88,
+      "flights": 106,
       "basis": "estimate: Korean Air, Asiana, Delta, United, Air Premia"
     },
     "TW-US": {
-      "flights": 88,
+      "flights": 106,
       "basis": "estimate: EVA Air, China Airlines, Starlux, United, Delta"
     },
     "HK-US": {
-      "flights": 42,
+      "flights": 50,
       "basis": "estimate: Cathay Pacific, United"
     },
     "PH-US": {
-      "flights": 25,
+      "flights": 30,
       "basis": "estimate: Philippine Airlines, United"
     },
     "AU-US": {
-      "flights": 50,
+      "flights": 60,
       "basis": "estimate: Qantas, United, American, Delta"
     },
     "NZ-US": {
-      "flights": 18,
+      "flights": 22,
       "basis": "estimate: Air New Zealand, United, American, Delta"
     },
     "SG-US": {
-      "flights": 10,
+      "flights": 12,
       "basis": "estimate: Singapore Airlines, United"
     },
     "VN-US": {
-      "flights": 5,
+      "flights": 6,
       "basis": "estimate: Vietnam Airlines"
     },
     "CA-JP": {
-      "flights": 18,
+      "flights": 22,
       "basis": "estimate: Air Canada, ANA, JAL"
     },
     "CA-KR": {
-      "flights": 10,
+      "flights": 12,
       "basis": "estimate: Air Canada, Korean Air"
     },
     "CA-CN": {
-      "flights": 10,
+      "flights": 12,
       "basis": "estimate: Air China, China Eastern, China Southern, Air Canada"
     },
     "CA-HK": {
-      "flights": 8,
+      "flights": 10,
       "basis": "estimate: Cathay Pacific, Air Canada"
     },
     "CA-TW": {
-      "flights": 8,
+      "flights": 10,
       "basis": "estimate: EVA Air, China Airlines, Air Canada"
     }
   }

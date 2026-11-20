@@ -33,6 +33,7 @@ export function seasonGroup(country: string, lat: number, lon: number): string {
 }
 
 const isAsia = (lat: number, lon: number) => lon > 60 && lat > -11
+const isSouthAmerica = (lat: number, lon: number) => lon > -82 && lon < -34 && lat < 13
 
 /** Key for a pair of countries, alphabetical ("CN-US"). */
 export const countryPair = (a: string, b: string) => (a < b ? `${a}-${b}` : `${b}-${a}`)
@@ -148,6 +149,8 @@ export function prepareRoutes(data: SimData): PreparedRoute[] {
         else if (isAsia(A[4], A[5]) && gB === 'northAmerica' && banks.asiaToNorthAmerica) profile = bankProfile(banks.asiaToNorthAmerica)
         else if (gA === 'northAmerica' && isAsia(B[4], B[5]) && banks.northAmericaToAsia) profile = bankProfile(banks.northAmericaToAsia)
         else if (isAsia(A[4], A[5]) && gB === 'europe' && banks.asiaToEurope) profile = bankProfile(banks.asiaToEurope)
+        else if (isSouthAmerica(A[4], A[5]) && gB === 'northAmerica' && banks.southAmericaToNorthAmerica) profile = bankProfile(banks.southAmericaToNorthAmerica)
+        else if (gA === 'northAmerica' && isSouthAmerica(B[4], B[5]) && banks.northAmericaToSouthAmerica) profile = bankProfile(banks.northAmericaToSouthAmerica)
       }
       out.push({
         key: `${key}${dir}`,
