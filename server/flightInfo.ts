@@ -39,7 +39,7 @@ class Cache<T> {
 }
 
 /** Give up on any one source after this long, so it can't hold up the panel. */
-const SOURCE_TIMEOUT_MS = 6000
+const SOURCE_TIMEOUT_MS = 4000
 
 async function getJson<T>(url: string): Promise<T | null> {
   const started = Date.now()
