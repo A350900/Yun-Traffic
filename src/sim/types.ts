@@ -18,6 +18,7 @@ export interface TrafficModel {
   regionalDailyFlights: Record<string, { countries?: string[]; flights: number }>
   corridorDailyFlights?: Record<string, { flights: number } | string>
   pairDailyFlights?: Record<string, { flights: number } | string>
+  closedRoutes?: { countries?: { list: string[] }; between?: { a: string[]; b: string[] } }
   monthly: Record<string, { factors: number[] }>
   weekday: { factors: Record<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun', number> }
   departureProfiles: {

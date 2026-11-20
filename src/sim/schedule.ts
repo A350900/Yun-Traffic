@@ -131,6 +131,13 @@ export function prepareRoutes(data: SimData): PreparedRoute[] {
     if (types) for (const t of types.split(' ')) p.types.add(t)
   })
 
+  // Routes that can't be flown today (closed airspace, bans) are left out.
+  const closedCountry = new Set(model.closedRoutes?.countries?.list ?? [])
+  const banA = new Set(model.closedRoutes?.between?.a ?? [])
+  const banB = new Set(model.closedRoutes?.between?.b ?? [])
+  const closed = (ca: string, cb: string) =>
+    closedCountry.has(ca) || closedCountry.has(cb) || (banA.has(ca) && banB.has(cb)) || (banA.has(cb) && banB.has(ca))
+
   const out: PreparedRoute[] = []
   const pushBothWays = (key: string | number, airline: number, dep0: string, arr0: string, km: number, types: string[], baseDaily: number, fixedProfile: number[] | null) => {
     for (const [dep, arr, A, B, dir] of [
@@ -173,7 +180,7 @@ export function prepareRoutes(data: SimData): PreparedRoute[] {
   for (const pair of pairs.values()) {
     const a = airports[pair.dep]
     const b = airports[pair.arr]
-    if (!a || !b) continue
+    if (!a || !b || closed(a[3], b[3])) continue
     const km = distanceKm(a[4], a[5], b[4], b[5])
     if (km < SIM_CONFIG.minRouteKm) continue
     const size = ((degree.get(pair.dep) ?? 1) * (degree.get(pair.arr) ?? 1)) ** SIM_CONFIG.sizeExponent

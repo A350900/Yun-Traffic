@@ -398,6 +398,93 @@
     "world": {
       "flights": 106600,
       "basis": "source: IATA via BusinessStats, 38.9 million flights in 2025"
+    },
+    "russia": {
+      "countries": [
+        "RU"
+      ],
+      "flights": 1800,
+      "basis": "source: Airportia flights monitor, ~2,050 flights/day to, from and within Russia (Nov 2026); departures = that minus inbound international (~250), rounded"
+    },
+    "northAfrica": {
+      "countries": [
+        "EG",
+        "MA",
+        "TN",
+        "DZ",
+        "LY"
+      ],
+      "flights": 1100,
+      "basis": "estimate from airport movements (Cairo ~170k/yr, Moroccan airports ~230k/yr, plus Red Sea resorts, Tunisia, Algeria, Libya)"
+    },
+    "southAfrica": {
+      "countries": [
+        "ZA"
+      ],
+      "flights": 600,
+      "basis": "estimate from ACSA airport movements (Johannesburg ~210k/yr, Cape Town ~90k/yr, Durban ~60k/yr, plus Lanseria and regional airports)"
+    },
+    "nigeria": {
+      "countries": [
+        "NG"
+      ],
+      "flights": 300,
+      "basis": "estimate (Lagos and Abuja domestic shuttles plus ~20 domestic airlines)"
+    },
+    "subSaharanAfrica": {
+      "countries": [
+        "AO",
+        "BJ",
+        "BW",
+        "BF",
+        "BI",
+        "CM",
+        "CV",
+        "CF",
+        "TD",
+        "KM",
+        "CD",
+        "CG",
+        "CI",
+        "DJ",
+        "GQ",
+        "ER",
+        "SZ",
+        "ET",
+        "GA",
+        "GM",
+        "GH",
+        "GN",
+        "GW",
+        "KE",
+        "LS",
+        "LR",
+        "MG",
+        "MW",
+        "ML",
+        "MR",
+        "MU",
+        "MZ",
+        "NA",
+        "NE",
+        "RW",
+        "ST",
+        "SN",
+        "SC",
+        "SL",
+        "SO",
+        "SS",
+        "SD",
+        "TZ",
+        "TG",
+        "UG",
+        "ZM",
+        "ZW",
+        "RE",
+        "YT"
+      ],
+      "flights": 900,
+      "basis": "estimate: OAG counts 2+ million intra-African seats a week (~2,400 flights/day at ~120 seats) plus ~600 intercontinental departures/day; minus North Africa, South Africa and Nigeria above"
     }
   },
   "corridorDailyFlights": {
@@ -472,6 +559,65 @@
     "CA-TW": {
       "flights": 10,
       "basis": "estimate: EVA Air, China Airlines, Air Canada"
+    }
+  },
+  "closedRoutes": {
+    "_note": "Routes that the 2014 data has but that can't be flown today; left out of the schedule.",
+    "countries": {
+      "list": [
+        "UA"
+      ],
+      "basis": "Ukrainian airspace closed to civil flights since February 2022"
+    },
+    "between": {
+      "a": [
+        "RU",
+        "BY"
+      ],
+      "b": [
+        "AT",
+        "BE",
+        "BG",
+        "HR",
+        "CY",
+        "CZ",
+        "DK",
+        "EE",
+        "FI",
+        "FR",
+        "DE",
+        "GR",
+        "HU",
+        "IE",
+        "IT",
+        "LV",
+        "LT",
+        "LU",
+        "MT",
+        "NL",
+        "PL",
+        "PT",
+        "RO",
+        "SK",
+        "SI",
+        "ES",
+        "SE",
+        "GB",
+        "US",
+        "CA",
+        "NO",
+        "IS",
+        "CH",
+        "JP",
+        "KR",
+        "AU",
+        "NZ",
+        "AL",
+        "MK",
+        "ME",
+        "MD"
+      ],
+      "basis": "EU/UK/US/Canada and allied airspace bans on Russian and Belarusian aircraft and the counter-bans (since 2022); flights between them stopped"
     }
   }
 }
