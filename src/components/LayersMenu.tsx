@@ -19,6 +19,11 @@ const OPTIONS: { key: ToggleKey; label: string; hint: string }[] = [
     hint: 'Rain and storms from the past 2 hours. More options under Weather.',
   },
   {
+    key: 'airports',
+    label: 'Airports',
+    hint: "Pins for the world's 100 busiest airports. Click one for details.",
+  },
+  {
     key: 'firBoundaries',
     label: 'Control boundaries',
     hint: 'En-route control areas (FIRs) worldwide; dashed over oceans. Approximate (VATSpy data, CC BY-SA).',

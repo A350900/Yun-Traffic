@@ -7,11 +7,13 @@ export interface LayerSettings {
   radar: boolean
   radarStyle: RadarStyle
   radarOpacity: number
+  /** pins for the busiest airports */
+  airports: boolean
   /** en-route control boundaries (FIRs) */
   firBoundaries: boolean
 }
 
-const DEFAULTS: LayerSettings = { dayNight: true, radar: false, radarStyle: 'cartoon', radarOpacity: 0.85, firBoundaries: false }
+const DEFAULTS: LayerSettings = { dayNight: true, radar: false, radarStyle: 'cartoon', radarOpacity: 0.85, firBoundaries: false, airports: true }
 const KEY = 'yun.layers'
 
 function load(): LayerSettings {

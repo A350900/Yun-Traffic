@@ -127,3 +127,8 @@ export function addAirportLayer(map: MLMap, beforeLayer?: string) {
     beforeLayer,
   )
 }
+
+/** Show or hide the pins. */
+export function setAirportsVisible(map: MLMap, visible: boolean) {
+  if (map.getLayer(AIRPORT_LAYER)) map.setLayoutProperty(AIRPORT_LAYER, 'visibility', visible ? 'visible' : 'none')
+}

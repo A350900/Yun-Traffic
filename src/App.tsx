@@ -67,6 +67,7 @@ export default function App() {
           setSelected(null)
         }}
         firBoundaries={layers.firBoundaries}
+        airports={layers.airports}
         onFeed={onFeed}
         dayNight={layers.dayNight} radar={radar} selection={selection} sim={sim} simEnabled={settings.simTraffic} simShowAreas={settings.simShowAreas} />
       <TopBar />

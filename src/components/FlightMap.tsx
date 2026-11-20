@@ -12,7 +12,7 @@ import { addDayNightLayer, setDayNightVisible, updateDayNight } from '../layers/
 import type { RadarController } from '../layers/radar'
 import type { SelectionStore } from '../flights/selection'
 import { addPathLayers, clearPath, updatePath } from '../flights/pathLayer'
-import { addAirportLayer, AIRPORT_LAYER } from '../layers/airports'
+import { addAirportLayer, AIRPORT_LAYER, setAirportsVisible } from '../layers/airports'
 import { setFirVisible } from '../layers/fir'
 import { extrapolate } from '../flights/position'
 import { F } from '../../shared/wire'
@@ -67,6 +67,8 @@ interface Props {
   onSelectAirport: (icao: string) => void
   /** Show en-route control boundaries (FIRs) */
   firBoundaries: boolean
+  /** Show the busiest-airport pins */
+  airports: boolean
   onFeed: (state: FeedState) => void
   /** Show the day/night (solar terminator) overlay */
   dayNight: boolean
@@ -87,12 +89,14 @@ function focusFor(map: MLMap): FocusHint | null {
   return { lat: c.lat, lon: c.lng, radiusNm: Math.max(radiusNm, 25) }
 }
 
-function FlightMap({ onSelect, onSelectAirport, firBoundaries, onFeed, dayNight, radar, selection, sim, simEnabled, simShowAreas }: Props) {
+function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, onFeed, dayNight, radar, selection, sim, simEnabled, simShowAreas }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
   const onSelectRef = useRef(onSelect)
   const onSelectAirportRef = useRef(onSelectAirport)
   onSelectAirportRef.current = onSelectAirport
+  const airportsRef = useRef(airports)
+  airportsRef.current = airports
   const firRef = useRef(firBoundaries)
   firRef.current = firBoundaries
   const onFeedRef = useRef(onFeed)
@@ -246,6 +250,7 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, onFeed, dayNight,
       addPathLayers(map, ICON_LAYERS[0]) // under the aircraft icons
       if (simEnabledRef.current) sim.enable(map, ICON_LAYERS[0]) // simulated traffic, under live aircraft
       addAirportLayer(map) // busiest airports: on top
+      setAirportsVisible(map, airportsRef.current)
       if (firRef.current) setFirVisible(map, true, ICON_LAYERS[0]) // control boundaries, under everything of ours
       drawAllProgressively()
       renderTimer = window.setInterval(tick, TICK_MS)
@@ -288,6 +293,11 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, onFeed, dayNight,
     const map = mapRef.current
     if (map) setDayNightVisible(map, dayNight)
   }, [dayNight])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (map) setAirportsVisible(map, airports)
+  }, [airports])
 
   useEffect(() => {
     const map = mapRef.current
