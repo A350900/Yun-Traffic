@@ -12,6 +12,7 @@ import { addDayNightLayer, setDayNightVisible, updateDayNight } from '../layers/
 import type { RadarController } from '../layers/radar'
 import type { SelectionStore } from '../flights/selection'
 import { addPathLayers, clearPath, updatePath } from '../flights/pathLayer'
+import { addAirportLayer } from '../layers/airports'
 import { extrapolate } from '../flights/position'
 import { F } from '../../shared/wire'
 import type { SimController } from '../sim/client' // simulated traffic
@@ -233,6 +234,7 @@ function FlightMap({ onSelect, onFeed, dayNight, radar, selection, sim, simEnabl
       dayNightTimer = window.setInterval(() => updateDayNight(map), 60_000)
       radar.attach(map) // above day/night, below labels and aircraft
       addAircraftLayers(map)
+      addAirportLayer(map, ICON_LAYERS[0]) // busiest airports: under paths, simulated and live aircraft
       addPathLayers(map, ICON_LAYERS[0]) // under the aircraft icons
       if (simEnabledRef.current) sim.enable(map, ICON_LAYERS[0]) // simulated traffic, under live aircraft
       drawAllProgressively()

@@ -1,0 +1,905 @@
+{
+"_about": "The 100 busiest airports by passengers (approximate 2024 ranking, based on ACI World's preliminary 2024 figures; the top 20 follow ACI, the order further down is approximate). Shown as pins on the map. Fields: [ICAO, IATA, name, city, lat, lon, rank].",
+"airports": [
+[
+"KATL",
+"ATL",
+"Hartsfield Jackson Atlanta International Airport",
+"Atlanta",
+33.6367,
+-84.4281,
+1
+],
+[
+"OMDB",
+"DXB",
+"Dubai International Airport",
+"Dubai",
+25.2528,
+55.3644,
+2
+],
+[
+"KDFW",
+"DFW",
+"Dallas Fort Worth International Airport",
+"Dallas-Fort Worth",
+32.8968,
+-97.038,
+3
+],
+[
+"RJTT",
+"HND",
+"Tokyo International Airport",
+"Tokyo",
+35.5523,
+139.78,
+4
+],
+[
+"EGLL",
+"LHR",
+"London Heathrow Airport",
+"London",
+51.4706,
+-0.4619,
+5
+],
+[
+"KDEN",
+"DEN",
+"Denver International Airport",
+"Denver",
+39.8617,
+-104.673,
+6
+],
+[
+"KORD",
+"ORD",
+"Chicago O'Hare International Airport",
+"Chicago",
+41.9786,
+-87.9048,
+7
+],
+[
+"LTFM",
+"IST",
+"Istanbul Airport",
+"Arnavutkoy",
+41.2622,
+28.7278,
+8
+],
+[
+"KLAX",
+"LAX",
+"Los Angeles International Airport",
+"Los Angeles",
+33.9425,
+-118.408,
+9
+],
+[
+"VIDP",
+"DEL",
+"Indira Gandhi International Airport",
+"New Delhi",
+28.5665,
+77.1031,
+10
+],
+[
+"LFPG",
+"CDG",
+"Charles de Gaulle International Airport",
+"Paris",
+49.0128,
+2.55,
+11
+],
+[
+"KJFK",
+"JFK",
+"John F Kennedy International Airport",
+"New York",
+40.6398,
+-73.7789,
+12
+],
+[
+"ZGGG",
+"CAN",
+"Guangzhou Baiyun International Airport",
+"Guangzhou",
+23.3924,
+113.299,
+13
+],
+[
+"EHAM",
+"AMS",
+"Amsterdam Airport Schiphol",
+"Amsterdam",
+52.3086,
+4.7639,
+14
+],
+[
+"WSSS",
+"SIN",
+"Singapore Changi International Airport",
+"Singapore",
+1.3502,
+103.994,
+15
+],
+[
+"ZSPD",
+"PVG",
+"Shanghai Pudong International Airport",
+"Shanghai",
+31.1434,
+121.805,
+16
+],
+[
+"RKSI",
+"ICN",
+"Incheon International Airport",
+"Seoul",
+37.4691,
+126.451,
+17
+],
+[
+"ZBAA",
+"PEK",
+"Beijing Capital International Airport",
+"Beijing",
+40.0801,
+116.585,
+18
+],
+[
+"KMCO",
+"MCO",
+"Orlando International Airport",
+"Orlando",
+28.4294,
+-81.309,
+19
+],
+[
+"LEMD",
+"MAD",
+"Madrid Barajas International Airport",
+"Madrid",
+40.4936,
+-3.5668,
+20
+],
+[
+"EDDF",
+"FRA",
+"Frankfurt am Main International Airport",
+"Frankfurt-am-Main",
+50.0264,
+8.5431,
+21
+],
+[
+"VTBS",
+"BKK",
+"Suvarnabhumi Airport",
+"Bangkok",
+13.6811,
+100.747,
+22
+],
+[
+"KLAS",
+"LAS",
+"Harry Reid International Airport",
+"Las Vegas",
+36.0801,
+-115.152,
+23
+],
+[
+"KCLT",
+"CLT",
+"Charlotte Douglas International Airport",
+"Charlotte",
+35.214,
+-80.9431,
+24
+],
+[
+"ZGSZ",
+"SZX",
+"Shenzhen Bao'an International Airport",
+"Shenzhen",
+22.6393,
+113.811,
+25
+],
+[
+"ZUTF",
+"TFU",
+"Chengdu Tianfu International Airport",
+"Chengdu",
+30.319,
+104.445,
+26
+],
+[
+"KMIA",
+"MIA",
+"Miami International Airport",
+"Miami",
+25.7932,
+-80.2906,
+27
+],
+[
+"LEBL",
+"BCN",
+"Barcelona International Airport",
+"Barcelona",
+41.2971,
+2.0785,
+28
+],
+[
+"KSEA",
+"SEA",
+"Seattle Tacoma International Airport",
+"Seattle",
+47.449,
+-122.309,
+29
+],
+[
+"KSFO",
+"SFO",
+"San Francisco International Airport",
+"San Francisco",
+37.619,
+-122.375,
+30
+],
+[
+"KEWR",
+"EWR",
+"Newark Liberty International Airport",
+"Newark",
+40.6925,
+-74.1687,
+31
+],
+[
+"KPHX",
+"PHX",
+"Phoenix Sky Harbor International Airport",
+"Phoenix",
+33.4343,
+-112.012,
+32
+],
+[
+"KIAH",
+"IAH",
+"George Bush Intercontinental Houston Airport",
+"Houston",
+29.9844,
+-95.3414,
+33
+],
+[
+"MMMX",
+"MEX",
+"Licenciado Benito Juarez International Airport",
+"Mexico City",
+19.4363,
+-99.0721,
+34
+],
+[
+"VABB",
+"BOM",
+"Chhatrapati Shivaji International Airport",
+"Mumbai",
+19.0887,
+72.8679,
+35
+],
+[
+"WIII",
+"CGK",
+"Soekarno-Hatta International Airport",
+"Jakarta",
+-6.1256,
+106.656,
+36
+],
+[
+"OTHH",
+"DOH",
+"Hamad International Airport",
+"Doha",
+25.2606,
+51.6138,
+37
+],
+[
+"VHHH",
+"HKG",
+"Chek Lap Kok International Airport",
+"Hong Kong",
+22.3089,
+113.915,
+38
+],
+[
+"WMKK",
+"KUL",
+"Kuala Lumpur International Airport",
+"Kuala Lumpur",
+2.7456,
+101.71,
+39
+],
+[
+"LTFJ",
+"SAW",
+"Sabiha Gokcen International Airport",
+"Istanbul",
+40.8986,
+29.3092,
+40
+],
+[
+"CYYZ",
+"YYZ",
+"Lester B. Pearson International Airport",
+"Toronto",
+43.6772,
+-79.6306,
+41
+],
+[
+"KBOS",
+"BOS",
+"General Edward Lawrence Logan International Airport",
+"Boston",
+42.3643,
+-71.0052,
+42
+],
+[
+"LIRF",
+"FCO",
+"Leonardo Da Vinci (Fiumicino) International Airport",
+"Rome",
+41.8045,
+12.2508,
+43
+],
+[
+"EDDM",
+"MUC",
+"Munich International Airport",
+"Munich",
+48.3538,
+11.7861,
+44
+],
+[
+"KMSP",
+"MSP",
+"Minneapolis-St Paul International/Wold-Chamberlain Airport",
+"Minneapolis",
+44.882,
+-93.2218,
+45
+],
+[
+"OEJN",
+"JED",
+"King Abdulaziz International Airport",
+"Jeddah",
+21.6796,
+39.1565,
+46
+],
+[
+"OERK",
+"RUH",
+"King Khaled International Airport",
+"Riyadh",
+24.9576,
+46.6988,
+47
+],
+[
+"RPLL",
+"MNL",
+"Ninoy Aquino International Airport",
+"Manila",
+14.5086,
+121.02,
+48
+],
+[
+"VVTS",
+"SGN",
+"Tan Son Nhat International Airport",
+"Ho Chi Minh City",
+10.8188,
+106.652,
+49
+],
+[
+"ZPPP",
+"KMG",
+"Kunming Wujiaba International Airport",
+"Kunming",
+24.9924,
+102.744,
+50
+],
+[
+"ZUCK",
+"CKG",
+"Chongqing Jiangbei International Airport",
+"Chongqing",
+29.7192,
+106.642,
+51
+],
+[
+"ZLXY",
+"XIY",
+"Xi'an Xianyang International Airport",
+"Xianyang",
+34.4471,
+108.752,
+52
+],
+[
+"ZSHC",
+"HGH",
+"Hangzhou Xiaoshan International Airport",
+"Hangzhou",
+30.2295,
+120.434,
+53
+],
+[
+"ZSSS",
+"SHA",
+"Shanghai Hongqiao International Airport",
+"Shanghai",
+31.1979,
+121.336,
+54
+],
+[
+"ZBAD",
+"PKX",
+"Beijing Daxing International Airport",
+"Beijing",
+39.5092,
+116.4106,
+55
+],
+[
+"KDTW",
+"DTW",
+"Detroit Metropolitan Wayne County Airport",
+"Detroit",
+42.2124,
+-83.3534,
+56
+],
+[
+"YSSY",
+"SYD",
+"Sydney Kingsford Smith International Airport",
+"Sydney",
+-33.9461,
+151.177,
+57
+],
+[
+"KFLL",
+"FLL",
+"Fort Lauderdale Hollywood International Airport",
+"Fort Lauderdale",
+26.0726,
+-80.1527,
+58
+],
+[
+"EGKK",
+"LGW",
+"London Gatwick Airport",
+"London",
+51.1481,
+-0.1903,
+59
+],
+[
+"SBGR",
+"GRU",
+"Guarulhos - Governador Andre Franco Montoro International Airport",
+"Sao Paulo",
+-23.4356,
+-46.4731,
+60
+],
+[
+"EIDW",
+"DUB",
+"Dublin Airport",
+"Dublin",
+53.4213,
+-6.2701,
+61
+],
+[
+"RJAA",
+"NRT",
+"Narita International Airport",
+"Tokyo",
+35.7647,
+140.386,
+62
+],
+[
+"RCTP",
+"TPE",
+"Taiwan Taoyuan International Airport",
+"Taipei",
+25.0777,
+121.233,
+63
+],
+[
+"LEPA",
+"PMI",
+"Palma De Mallorca Airport",
+"Palma De Mallorca",
+39.5517,
+2.7388,
+64
+],
+[
+"VOBL",
+"BLR",
+"Bengaluru International Airport",
+"Bangalore",
+13.1979,
+77.7063,
+65
+],
+[
+"KPHL",
+"PHL",
+"Philadelphia International Airport",
+"Philadelphia",
+39.8719,
+-75.2411,
+66
+],
+[
+"KBWI",
+"BWI",
+"Baltimore/Washington International Thurgood Marshal Airport",
+"Baltimore",
+39.1754,
+-76.6683,
+67
+],
+[
+"KSLC",
+"SLC",
+"Salt Lake City International Airport",
+"Salt Lake City",
+40.7884,
+-111.978,
+68
+],
+[
+"KLGA",
+"LGA",
+"La Guardia Airport",
+"New York",
+40.7772,
+-73.8726,
+69
+],
+[
+"KDCA",
+"DCA",
+"Ronald Reagan Washington National Airport",
+"Washington",
+38.8521,
+-77.0377,
+70
+],
+[
+"KIAD",
+"IAD",
+"Washington Dulles International Airport",
+"Dulles",
+38.9445,
+-77.4558,
+71
+],
+[
+"KSAN",
+"SAN",
+"San Diego International Airport",
+"San Diego",
+32.7336,
+-117.19,
+72
+],
+[
+"KTPA",
+"TPA",
+"Tampa International Airport",
+"Tampa",
+27.9755,
+-82.5332,
+73
+],
+[
+"KBNA",
+"BNA",
+"Nashville International Airport",
+"Nashville",
+36.1245,
+-86.6782,
+74
+],
+[
+"KAUS",
+"AUS",
+"Austin Bergstrom International Airport",
+"Austin",
+30.1945,
+-97.6699,
+75
+],
+[
+"KMDW",
+"MDW",
+"Chicago Midway International Airport",
+"Chicago",
+41.786,
+-87.7524,
+76
+],
+[
+"PHNL",
+"HNL",
+"Honolulu International Airport",
+"Honolulu",
+21.3187,
+-157.922,
+77
+],
+[
+"YMML",
+"MEL",
+"Melbourne International Airport",
+"Melbourne",
+-37.6733,
+144.843,
+78
+],
+[
+"LSZH",
+"ZRH",
+"Zurich Airport",
+"Zurich",
+47.4647,
+8.5492,
+79
+],
+[
+"EKCH",
+"CPH",
+"Copenhagen Kastrup Airport",
+"Copenhagen",
+55.6179,
+12.656,
+80
+],
+[
+"ENGM",
+"OSL",
+"Oslo Gardermoen Airport",
+"Oslo",
+60.1939,
+11.1004,
+81
+],
+[
+"LOWW",
+"VIE",
+"Vienna International Airport",
+"Vienna",
+48.1103,
+16.5697,
+82
+],
+[
+"LPPT",
+"LIS",
+"Lisbon Portela Airport",
+"Lisbon",
+38.7813,
+-9.1359,
+83
+],
+[
+"EGCC",
+"MAN",
+"Manchester Airport",
+"Manchester",
+53.3537,
+-2.275,
+84
+],
+[
+"LGAV",
+"ATH",
+"Eleftherios Venizelos International Airport",
+"Athens",
+37.9364,
+23.9445,
+85
+],
+[
+"LTAI",
+"AYT",
+"Antalya International Airport",
+"Antalya",
+36.8987,
+30.8005,
+86
+],
+[
+"UUEE",
+"SVO",
+"Sheremetyevo International Airport",
+"Moscow",
+55.9726,
+37.4146,
+87
+],
+[
+"SKBO",
+"BOG",
+"El Dorado International Airport",
+"Bogota",
+4.7016,
+-74.1469,
+88
+],
+[
+"MMUN",
+"CUN",
+"Cancun International Airport",
+"Cancun",
+21.0365,
+-86.8771,
+89
+],
+[
+"VVNB",
+"HAN",
+"Noi Bai International Airport",
+"Hanoi",
+21.2212,
+105.807,
+90
+],
+[
+"HECA",
+"CAI",
+"Cairo International Airport",
+"Cairo",
+30.1219,
+31.4056,
+91
+],
+[
+"OMAA",
+"AUH",
+"Abu Dhabi International Airport",
+"Abu Dhabi",
+24.433,
+54.6511,
+92
+],
+[
+"RJBB",
+"KIX",
+"Kansai International Airport",
+"Osaka",
+34.4273,
+135.244,
+93
+],
+[
+"ZSNJ",
+"NKG",
+"Nanjing Lukou Airport",
+"Nanjing",
+31.742,
+118.862,
+94
+],
+[
+"ZHHH",
+"WUH",
+"Wuhan Tianhe International Airport",
+"Wuhan",
+30.7838,
+114.208,
+95
+],
+[
+"ZGHA",
+"CSX",
+"Changsha Huanghua Airport",
+"Changsha",
+28.1892,
+113.22,
+96
+],
+[
+"VOHS",
+"HYD",
+"Rajiv Gandhi International Airport Shamshabad",
+"Hyderabad",
+17.2313,
+78.4299,
+97
+],
+[
+"VOMM",
+"MAA",
+"Chennai International Airport",
+"Chennai",
+12.99,
+80.1693,
+98
+],
+[
+"VTBD",
+"DMK",
+"Don Mueang International Airport",
+"Bangkok",
+13.9126,
+100.607,
+99
+],
+[
+"CYVR",
+"YVR",
+"Vancouver International Airport",
+"Vancouver",
+49.1939,
+-123.184,
+100
+]
+]
+}
