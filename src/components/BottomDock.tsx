@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
-import { FilterIcon, LayersIcon, PlaybackIcon, SettingsIcon, StatsIcon, WeatherIcon } from './Icons'
+import { FilterIcon, LayersIcon, SettingsIcon, StatsIcon, WeatherIcon } from './Icons'
 import LayersMenu from './LayersMenu'
 import WeatherPanel from './WeatherPanel'
 import SettingsPanel from './SettingsPanel'
@@ -12,7 +12,6 @@ const ITEMS: { id: string; label: string; icon: ReactNode }[] = [
   { id: 'filters', label: 'Filters', icon: <FilterIcon /> },
   { id: 'weather', label: 'Weather', icon: <WeatherIcon /> },
   { id: 'stats', label: 'Stats', icon: <StatsIcon /> },
-  { id: 'playback', label: 'Playback', icon: <PlaybackIcon /> },
   { id: 'settings', label: 'Settings', icon: <SettingsIcon /> },
 ]
 
@@ -31,9 +30,11 @@ function BottomDock({ layers, onLayersChange, radar, settings, onSettingsChange 
   // Close the open menu on Escape or a click outside the dock.
   useEffect(() => {
     if (!active) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setActive(null)
+    // A dialog opened from a menu (e.g. "More info") handles its own Escape/clicks.
+    const dialogOpen = () => document.querySelector('[data-dock-dialog]') !== null
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !dialogOpen() && setActive(null)
     const onDown = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setActive(null)
+      if (!ref.current?.contains(e.target as Node) && !dialogOpen()) setActive(null)
     }
     window.addEventListener('keydown', onKey)
     window.addEventListener('pointerdown', onDown)

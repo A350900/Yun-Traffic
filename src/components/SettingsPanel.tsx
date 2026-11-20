@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import type { Settings } from '../state/settings'
+import SimInfoDialog from './SimInfoDialog'
 import { UNIT_SYSTEMS } from '../units'
 
 interface Props {
@@ -8,6 +10,7 @@ interface Props {
 
 export default function SettingsPanel({ settings, onChange }: Props) {
   const active = UNIT_SYSTEMS.find((u) => u.id === settings.units)
+  const [info, setInfo] = useState(false)
   return (
     <div className="popover settings-panel" role="dialog" aria-label="Settings">
       <h3>Units</h3>
@@ -32,7 +35,17 @@ export default function SettingsPanel({ settings, onChange }: Props) {
         <span>
           <span className="toggle-label">Fill coverage gaps</span>
           <span className="toggle-hint">
-            Illustrative flights on real airline routes, only in areas live data can't see (oceans, China, Africa, Russia…). Hollow outlines. Not live data.
+            Illustrative flights on real airline routes, only in areas live data can't see.{' '}
+            <button
+              type="button"
+              className="link-btn"
+              onClick={(e) => {
+                e.preventDefault() // don't toggle the switch this sits in
+                setInfo(true)
+              }}
+            >
+              More info
+            </button>
           </span>
         </span>
         <input type="checkbox" role="switch" checked={settings.simTraffic} onChange={(e) => onChange({ ...settings, simTraffic: e.target.checked })} />
@@ -42,12 +55,13 @@ export default function SettingsPanel({ settings, onChange }: Props) {
         <label className="toggle-row">
           <span>
             <span className="toggle-label">Show simulation areas</span>
-            <span className="toggle-hint">Outline where simulated traffic is allowed (edit in data/sim/gap-areas.json).</span>
+            <span className="toggle-hint">Outline regions where simulated traffic is allowed</span>
           </span>
           <input type="checkbox" role="switch" checked={settings.simShowAreas} onChange={(e) => onChange({ ...settings, simShowAreas: e.target.checked })} />
           <span className="switch" aria-hidden="true" />
         </label>
       )}
+      {info && <SimInfoDialog onClose={() => setInfo(false)} />}
     </div>
   )
 }
