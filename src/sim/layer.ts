@@ -1,6 +1,7 @@
 // Simulated traffic: the map layer (hollow outlines, under live aircraft).
 import type { ExpressionSpecification, GeoJSONSource, Map as MLMap } from 'maplibre-gl'
 import { ICON } from '../flights/icons'
+import { ICON_SIZE_STOPS } from '../flights/layer'
 import gapAreas from '../../data/sim/gap-areas.json'
 
 export const SIM_SOURCE = 'sim-aircraft'
@@ -8,13 +9,7 @@ export const SIM_LAYER = 'sim-icons'
 const AREAS = 'sim-areas'
 
 // Same zoom scaling as live aircraft (src/flights/layer.ts).
-const iconSize = [
-  'interpolate', ['linear'], ['zoom'],
-  1, ['*', 0.42, ['get', 's']],
-  4, ['*', 0.62, ['get', 's']],
-  8, ['*', 0.95, ['get', 's']],
-  12, ['*', 1.35, ['get', 's']],
-] as unknown as ExpressionSpecification
+const iconSize = ['interpolate', ['linear'], ['zoom'], ...ICON_SIZE_STOPS.flatMap(([z, f]) => [z, ['*', f, ['get', 's']]])] as unknown as ExpressionSpecification
 
 export function addSimLayer(map: MLMap, beforeId?: string) {
   if (map.getSource(SIM_SOURCE)) return

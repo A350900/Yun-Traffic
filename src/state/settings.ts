@@ -10,7 +10,7 @@ export interface Settings {
   simShowAreas: boolean
 }
 
-const DEFAULTS: Settings = { units: 'aviation', simTraffic: false, simShowAreas: false }
+const DEFAULTS: Settings = { units: 'aviation', simTraffic: true, simShowAreas: false }
 const KEY = 'yun.settings'
 
 function load(): Settings {

@@ -105,7 +105,9 @@ export function prepareRoutes(data: SimData): PreparedRoute[] {
     const size = ((degree.get(dep) ?? 1) * (degree.get(arr) ?? 1)) ** SIM_CONFIG.sizeExponent
     const scale = data.calibration?.scale ?? SIM_CONFIG.defaultScale
     const regional = data.calibration?.countryMultipliers[a[3]] ?? 1
-    const baseDaily = Math.min(SIM_CONFIG.maxDailyPerRoute, (scale * regional * size) / (1 + km / SIM_CONFIG.distanceSoftenKm))
+    const soften = data.calibration?.distanceSoftenKm ?? SIM_CONFIG.distanceSoftenKm
+    const cap = km >= prof.longHaulFromKm ? SIM_CONFIG.maxDailyLongHaul : SIM_CONFIG.maxDailyPerRoute
+    const baseDaily = Math.min(cap, (scale * regional * size) / (1 + km / soften))
     const gA = seasonGroup(a[3], a[4], a[5])
     const gB = seasonGroup(b[3], b[4], b[5])
 

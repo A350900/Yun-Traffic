@@ -35,7 +35,7 @@ export type ToWorker =
 export interface SimStats {
   /** simulated flights in the air worldwide (model) */
   airborne: number
-  /** shown on the map (inside gap areas, not duplicating live traffic) */
+  /** shown worldwide (inside gap areas, not duplicating live traffic), whatever the view */
   shown: number
 }
 
@@ -71,6 +71,7 @@ function frame(id: number, t: number, view: ViewWindow | null) {
   }
 
   const parts: string[] = []
+  let shownWorldwide = 0
   for (const { p, k } of positions) {
     if (p.visibility <= 0) continue // near an airport: never shown
     const area = mask.at(p.lat, p.lon)
@@ -79,6 +80,7 @@ function frame(id: number, t: number, view: ViewWindow | null) {
     // Stable choice: the same flights stay selected as long as the fill level is similar.
     const u = hash(`${p.flight.route}|${p.flight.dep}`) / 4294967296
     if (u >= frac) continue
+    shownWorldwide++
     if (view) {
       const dLon = ((p.lon - view.centerLon + 540) % 360) - 180
       if (dLon > view.halfLon || dLon < -view.halfLon || p.lat < view.south || p.lat > view.north) continue
@@ -95,7 +97,7 @@ function frame(id: number, t: number, view: ViewWindow | null) {
         `"d0":${p.flight.dep},"d1":${p.flight.arr}}}`,
     )
   }
-  const stats: SimStats = { airborne: positions.length, shown: parts.length }
+  const stats: SimStats = { airborne: positions.length, shown: shownWorldwide }
   ctx.postMessage({ type: 'frame', id, text: `{"type":"FeatureCollection","features":[${parts.join(',')}]}`, stats } satisfies FromWorker)
 }
 

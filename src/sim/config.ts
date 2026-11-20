@@ -22,10 +22,16 @@ export const SIM_CONFIG = {
    * relative to small ones.
    */
   sizeExponent: 0.75,
-  /** Distance factor = 1 + km / distanceSoftenKm (longer routes have fewer daily flights). */
+  /**
+   * Distance factor = 1 + km / distanceSoftenKm (longer routes have fewer daily flights). The
+   * calibrated value in data/sim/calibration.json overrides this; it's chosen so the model has a
+   * realistic flight count AND realistic average flight length.
+   */
   distanceSoftenKm: 2500,
   /** No route gets more than this many flights a day (per airline). */
   maxDailyPerRoute: 24,
+  /** ...and long-haul routes (over departureProfiles.longHaulFromKm) no more than this. */
+  maxDailyLongHaul: 3,
   /**
    * Overall size of the schedule before calibration. The real value comes from
    * data/sim/calibration.json (scripts/sim/calibrate.ts): regions matched to published daily

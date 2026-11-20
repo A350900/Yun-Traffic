@@ -29,6 +29,8 @@ export interface TrafficModel {
 /** Written by scripts/sim/calibrate.ts (data/sim/calibration.json). */
 export interface Calibration {
   scale: number
+  /** overrides SIM_CONFIG.distanceSoftenKm */
+  distanceSoftenKm?: number
   /** departure country (ISO) -> multiplier */
   countryMultipliers: Record<string, number>
 }

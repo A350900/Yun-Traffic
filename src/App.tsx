@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import FlightMap from './components/FlightMap'
 import TopBar from './components/TopBar'
 import BottomDock from './components/BottomDock'
@@ -20,6 +20,7 @@ export default function App() {
   const [settings, setSettings] = useSettings()
   const [selection] = useState(() => new SelectionStore())
   const [sim] = useState(() => new SimController()) // simulated traffic
+  const simShown = useSyncExternalStore(sim.subscribe, () => (settings.simTraffic ? (sim.stats?.shown ?? 0) : 0))
   const [radar] = useState(
     () => new RadarController({ visible: layers.radar, style: layers.radarStyle, opacity: layers.radarOpacity }),
   )
@@ -66,6 +67,7 @@ export default function App() {
       )}
       <FeedStatus
         count={feed?.aircraft.size ?? 0}
+        simulated={simShown}
         stats={feed?.stats ?? null}
         error={feed?.error ?? null}
         now={serverNow}

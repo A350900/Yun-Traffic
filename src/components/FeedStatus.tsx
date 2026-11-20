@@ -2,6 +2,8 @@ import type { FeedStats } from '../../shared/wire'
 
 interface Props {
   count: number
+  /** simulated traffic: simulated aircraft currently shown worldwide */
+  simulated: number
   stats: FeedStats | null
   error: string | null
   now: number
@@ -28,7 +30,7 @@ function sourceSummary(stats: FeedStats, now: number) {
   return lines.join('\n')
 }
 
-export default function FeedStatus({ count, stats, error, now, synthetic }: Props) {
+export default function FeedStatus({ count, simulated, stats, error, now, synthetic }: Props) {
   let state: 'live' | 'warn' | 'down' = 'live'
   let detail = ''
   if (synthetic) {
@@ -62,6 +64,11 @@ export default function FeedStatus({ count, stats, error, now, synthetic }: Prop
     >
       <span className="dot" />
       <strong>{count.toLocaleString()}</strong> aircraft
+      {simulated > 0 && (
+        <span className="sim-count" title="Simulated traffic: illustrative flights filling coverage gaps (not live data)">
+          {' '}+ {simulated.toLocaleString()} simulated
+        </span>
+      )}
       <span className="dim"> · {detail}</span>
     </div>
   )

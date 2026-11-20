@@ -30,7 +30,7 @@ export default function SettingsPanel({ settings, onChange }: Props) {
       <h3 className="settings-section">Simulated traffic</h3>
       <label className="toggle-row">
         <span>
-          <span className="toggle-label">Fill coverage gaps (beta)</span>
+          <span className="toggle-label">Fill coverage gaps</span>
           <span className="toggle-hint">
             Illustrative flights on real airline routes, only in areas live data can't see (oceans, China, Africa, Russia…). Hollow outlines. Not live data.
           </span>

@@ -33,11 +33,10 @@ function departuresByCountry(m: SimModel, key: string) {
   return by
 }
 
-let cal: Calibration
-if (process.argv.includes('--write')) {
-  cal = { scale: SIM_CONFIG.defaultScale, countryMultipliers: {} }
+/** Regional shares + global peak, for a given distance setting. */
+function calibrate(distanceSoftenKm: number, log = false): Calibration {
+  const cal: Calibration = { scale: SIM_CONFIG.defaultScale, distanceSoftenKm, countryMultipliers: {} }
   for (let pass = 1; pass <= 4; pass++) {
-    // Regional shares (relative to the world total)
     const m = new SimModel({ ...base, calibration: cal })
     const by = departuresByCountry(m, AVG_DAY)
     const total = Object.values(by).reduce((a, b) => a + b, 0)
@@ -47,13 +46,30 @@ if (process.argv.includes('--write')) {
       const want = (t.flights / world) * total
       const adj = have > 0 ? want / have : 1
       for (const c of t.countries) cal.countryMultipliers[c] = +((cal.countryMultipliers[c] ?? 1) * adj).toFixed(4)
-      if (pass === 4) console.log(`  ${name}: ${have} -> want ${Math.round(want)} (x${adj.toFixed(3)})`)
+      if (log && pass === 4) console.log(`  ${name}: ${have} -> want ${Math.round(want)}`)
     }
-    // Global scale to the July peak
     const n = new SimModel({ ...base, calibration: cal }).countAirborne(PEAK)
     cal.scale = +(cal.scale * (base.model.globalAirborne.julyPeak.value / n)).toPrecision(5)
-    console.log(`pass ${pass}: ${n} airborne at July peak -> scale ${cal.scale}`)
   }
+  return cal
+}
+
+let cal: Calibration
+if (process.argv.includes('--write')) {
+  // Search the distance setting: matching the airborne peak AND the daily flight
+  // count means flights have a realistic average length (otherwise long-haul
+  // flights over oceans and poles end up over-represented).
+  let best: { cal: Calibration; flights: number } | null = null
+  for (const soften of [2500, 1800, 1300, 1000, 800, 650, 500, 400]) {
+    const c = calibrate(soften)
+    const flights = new SimModel({ ...base, calibration: c }).day(AVG_DAY).length
+    console.log(`distance setting ${soften} km: ${flights.toLocaleString()} flights/day (target ${world.toLocaleString()})`)
+    if (!best || Math.abs(flights - world) < Math.abs(best.flights - world)) best = { cal: c, flights }
+    if (flights > world) break
+  }
+  cal = best!.cal
+  console.log(`chosen distance setting ${cal.distanceSoftenKm} km`)
+  calibrate(cal.distanceSoftenKm!, true)
   writeFileSync(CAL_FILE, JSON.stringify({ _about: 'Written by scripts/sim/calibrate.ts --write. Do not edit by hand.', calibratedAt: new Date().toISOString(), ...cal }, null, 2) + '\n')
   console.log(`saved ${CAL_FILE}`)
 } else {
@@ -92,6 +108,7 @@ for (const [label, t] of [
   }
   console.log(`\n${label}: ${Object.entries(reg).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ')}`)
 }
+console.log('(North Atlantic reference: ~1,500 flights/day, summer peaks ~1,800-1,970 -> roughly 700-800 airborne at the July peak)')
 for (const h of [3, 15]) {
   const t = Date.UTC(2024, 6, 11, h)
   let east = 0

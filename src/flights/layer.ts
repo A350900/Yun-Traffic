@@ -60,14 +60,20 @@ export interface ViewWindow {
   north: number
 }
 
-// Icons shrink when zoomed out so 10k+ aircraft on a world view stay readable.
-const iconSize = (scale: number) => [
-  'interpolate', ['linear'], ['zoom'],
-  1, ['*', 0.42 * scale, ['get', 's']],
-  4, ['*', 0.62 * scale, ['get', 's']],
-  8, ['*', 0.95 * scale, ['get', 's']],
-  12, ['*', 1.35 * scale, ['get', 's']],
-] as unknown as ExpressionSpecification
+// Icons shrink when zoomed out, so 10k+ aircraft on a world view read as real
+// traffic density instead of merging into solid blobs. Shared with the
+// simulated-traffic layer so both look alike.
+export const ICON_SIZE_STOPS: [zoom: number, factor: number][] = [
+  [1, 0.26],
+  [2, 0.32],
+  [3, 0.4],
+  [4, 0.52],
+  [6, 0.75],
+  [8, 0.95],
+  [12, 1.35],
+]
+const iconSize = (scale: number) =>
+  ['interpolate', ['linear'], ['zoom'], ...ICON_SIZE_STOPS.flatMap(([z, f]) => [z, ['*', f * scale, ['get', 's']]])] as unknown as ExpressionSpecification
 
 export function addAircraftLayers(map: MLMap) {
   addAircraftIcons(map)
