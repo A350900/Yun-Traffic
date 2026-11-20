@@ -183,42 +183,47 @@ export async function flightInfo(
   /** live track (degrees) and altitude (ft, -1 = ground), for the direction check */
   track: number | null = null,
   altitude: number | null = null,
+  /** our own record of this flight (server/history.ts) */
+  local: FlightTrace | null = null,
 ): Promise<FlightInfo> {
   const airlinePrefix = callsign?.match(/^([A-Z]{3})\d/)?.[1] ?? null
   // Everything at once. The flown path is only used to double-check the
   // departure airport, so don't wait more than a moment for it; if it arrives
   // later the panel asks again and gets the corrected answer from the cache.
   // (The photo has its own endpoint so a slow photo service never holds up the route.)
-  const [r0, al, ac, tr] = await Promise.all([
+  const [r0, al, ac, trRemote] = await Promise.all([
     callsign ? settle(route(callsign)) : null,
     airlinePrefix ? settle(airline(airlinePrefix)) : null,
     settle(aircraft(hex)),
-    Promise.race([settle(flightTrace(hex)), new Promise<null>((r) => setTimeout(() => r(null), 600))]),
+    Promise.race([settle(flightTrace(hex, local)), new Promise<null>((r) => setTimeout(() => r(null), 600))]),
   ])
+  // adsb.lol not back yet: what our own feed has seen of this flight will do.
+  const tr = trRemote ?? local
   const registration = reg ?? ac?.registration ?? tr?.aircraft?.registration ?? null
   const typeCode = ac?.icao_type ?? liveType ?? tr?.aircraft?.type ?? null
+
+  // Where we saw it take off, if we did (on the ground, or still low: coverage
+  // often starts just after takeoff).
+  const start = tr?.points[0]
+  const startsLow = start && (start[3] === -1 || start[3] < 4000)
+  const takeoffAirport = start && startsLow ? nearestAirport(start[1], start[2], start[3] === -1 ? 15 : 35) : null
 
   // The callsign database is crowd-sourced and can be stale. If we saw where
   // this aircraft actually took off and it's a different airport, trust that.
   let r = r0
   let originCorrected = false
-  const start = tr?.points[0]
-  // On the ground, or still low (coverage often starts just after takeoff).
-  const startsLow = start && (start[3] === -1 || start[3] < 4000)
-  if (r && start && startsLow && distanceKm(start[1], start[2], r.origin.lat, r.origin.lon) > 25) {
-    const actual = nearestAirport(start[1], start[2], start[3] === -1 ? 15 : 35)
-    if (actual && actual.icao !== r.origin.icao) {
-      r = { ...r, origin: actual }
-      originCorrected = true
-    }
+  if (r && takeoffAirport && takeoffAirport.icao !== r.origin.icao && distanceKm(start![1], start![2], r.origin.lat, r.origin.lon) > 25) {
+    r = { ...r, origin: takeoffAirport }
+    originCorrected = true
   }
 
   // Flight numbers get reused, and the database often has a flight the other way
   // round (the return leg). Both pass the "is it on the path" test, so also check
-  // which way it's heading: towards the listed origin = reversed; away from both = wrong.
+  // which way it's heading: towards the listed origin = reversed; away from the
+  // destination = that destination is wrong.
   let reversed = false
   let headingOk = true
-  if (r && pos && track != null && altitude != null && altitude > 10000 && !originCorrected) {
+  if (r && pos && track != null && altitude != null && altitude > 10000) {
     const dDest = distanceKm(pos[0], pos[1], r.destination.lat, r.destination.lon)
     const dOrig = distanceKm(pos[0], pos[1], r.origin.lat, r.origin.lon)
     // Away from airports only (departure/arrival turns, holding).
@@ -226,7 +231,7 @@ export async function flightInfo(
       const offDest = angleDiff(track, bearing(pos[0], pos[1], r.destination.lat, r.destination.lon))
       const offOrig = angleDiff(track, bearing(pos[0], pos[1], r.origin.lat, r.origin.lon))
       if (offDest > 100) {
-        if (offOrig < 50) {
+        if (offOrig < 50 && !originCorrected && !takeoffAirport) {
           r = { ...r, origin: r.destination, destination: r.origin }
           reversed = true
         } else headingOk = false
@@ -234,11 +239,23 @@ export async function flightInfo(
     }
   }
 
-  let routeOk = false
+  // On the path between the two airports? (No position: nothing says otherwise.)
+  let onPath = true
   if (r && pos) {
     const total = distanceKm(r.origin.lat, r.origin.lon, r.destination.lat, r.destination.lon)
     const via = distanceKm(r.origin.lat, r.origin.lon, pos[0], pos[1]) + distanceKm(pos[0], pos[1], r.destination.lat, r.destination.lon)
-    routeOk = headingOk && via <= total * 1.2 + 200
+    onPath = via <= total * 1.2 + 200
+  }
+  const routeOk = headingOk && onPath
+
+  // The listed route doesn't fit, but we saw where it took off: show that much.
+  let routeOut: FlightInfo['route'] = null
+  if (r && routeOk) {
+    routeOut = { origin: r.origin, destination: r.destination, plausible: true, originCorrected, verified: Boolean(tr && !tr.partial) || Boolean(takeoffAirport), reversed }
+  } else if (takeoffAirport) {
+    routeOut = { origin: takeoffAirport, destination: null, plausible: true, originCorrected: false, verified: true, reversed: false, listed: r0 ? { origin: r0.origin, destination: r0.destination } : undefined }
+  } else if (r) {
+    routeOut = { origin: r.origin, destination: r.destination, plausible: false, originCorrected, verified: Boolean(tr && !tr.partial), reversed }
   }
 
   const airlineInfo = r?.airline ?? al
@@ -252,7 +269,7 @@ export async function flightInfo(
       registration,
       owner: ac?.registered_owner ?? null,
     },
-    route: r ? { origin: r.origin, destination: r.destination, plausible: routeOk, originCorrected, verified: Boolean(tr && !tr.partial), reversed } : null,
+    route: routeOut,
   }
 }
 
@@ -327,11 +344,17 @@ function isNewFlight(a: [number, number, number, number], b: [number, number, nu
  * The path flown on the current flight: positions since the last time the
  * aircraft was on the ground, as [epoch ms, lat, lon, altitude ft (-1 = ground)].
  */
-export async function flightTrace(hex: string): Promise<FlightTrace> {
-  const [full, recent] = await Promise.all([
-    settle(fullTraceCache.get(hex, 120_000, () => getTrace('full', hex))),
-    settle(recentTraceCache.get(hex, 20_000, () => getTrace('recent', hex))),
+export async function flightTrace(hex: string, local: FlightTrace | null = null): Promise<FlightTrace> {
+  const outcome = <T,>(p: Promise<T>) => p.then((v) => ({ ok: true as const, v }), () => ({ ok: false as const, v: null }))
+  const [fullR, recentR] = await Promise.all([
+    outcome(fullTraceCache.get(hex, 120_000, () => getTrace('full', hex))),
+    outcome(recentTraceCache.get(hex, 20_000, () => getTrace('recent', hex))),
   ])
+  const full = fullR.v
+  const recent = recentR.v
+  // adsb.lol doesn't know this aircraft (e.g. seen only by OpenSky): our own
+  // record of it is the best there is. If it just failed, it's worth retrying.
+  if (!full && !recent && local) return { ...local, partial: !(fullR.ok && recentR.ok) }
   const points: [number, number, number, number][] = []
   for (const t of [full, recent]) {
     if (!t) continue

@@ -8,6 +8,7 @@ import { Scheduler } from './scheduler.ts'
 import { OpenSkyPoller } from './opensky.ts'
 import { AIRPLANES_LIVE, RegionSweep } from './regionSweep.ts'
 import { flightInfo, flightPhoto, flightTrace, onTraceRequest } from './flightInfo.ts'
+import type { FlightTrace } from '../shared/wire.ts'
 import { SimRecorder } from './sim/recorder.ts' // simulated traffic
 import type { AircraftResponse } from '../shared/wire.ts'
 
@@ -141,6 +142,7 @@ createServer((req, res) => {
       aircraft: store.size,
       sim: SIM_ENABLED ? simRecorder.status : 'disabled', // simulated traffic
       coverage: store.coverage(),
+      history: store.history.size, // recent positions kept for instant flight paths
       adsbLol: { lastFetch: scheduler.lastFetch },
       opensky: opensky.status,
       airplanesLive: airplanesLive.status,
@@ -160,10 +162,17 @@ createServer((req, res) => {
             ac?.[7] ?? ((url.searchParams.get('t') || '').trim().toUpperCase().slice(0, 4) || null),
             ac?.[3] ?? null,
             ac?.[5] ?? null,
+            store.history.trace(hex),
           )
         : detail[1] === 'photo'
           ? flightPhoto(hex, ac?.[8] ?? ((url.searchParams.get('reg') || '').trim().toUpperCase().slice(0, 12) || null))
-          : flightTrace(hex)
+          : (() => {
+              // Answer quickly: if adsb.lol's full history isn't back within a
+              // moment, send what we've seen ourselves (the panel asks again shortly).
+              const local = store.history.trace(hex)
+              const remote = flightTrace(hex, local)
+              return local ? Promise.race([remote, new Promise<FlightTrace>((r) => setTimeout(() => r(local), 1200))]) : remote
+            })()
     job.then(
       (body) => send(req, res, 200, body),
       (err) => send(req, res, 502, { error: (err as Error).message }),

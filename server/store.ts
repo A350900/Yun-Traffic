@@ -1,4 +1,5 @@
 import type { AircraftTuple } from '../shared/wire.ts'
+import { PositionHistory } from './history.ts'
 
 /**
  * An aircraft is kept while any source still reports it, and dropped once
@@ -41,6 +42,8 @@ interface Entry {
  * "everything that changed since version N" instead of a full snapshot.
  */
 export class AircraftStore {
+  /** recent positions per aircraft (for instant flight paths) */
+  readonly history = new PositionHistory()
   private entries = new Map<string, Entry>()
   private meta = new Map<string, Meta>()
   /** source -> (hex -> last time that source reported it) */
@@ -126,6 +129,7 @@ export class AircraftStore {
 
     this.version++
     this.entries.set(hex, { data: merged, version: this.version, lastReported: now })
+    this.history.add(hex, merged[9], merged[1], merged[2], merged[5], merged[3])
     this.tombstones.delete(hex)
   }
 
@@ -137,6 +141,7 @@ export class AircraftStore {
         this.tombstones.set(hex, { version: this.version, at: now })
       }
     }
+    this.history.retain((hex) => this.entries.has(hex))
     for (const [hex, m] of this.meta) if (now - m.at > META_TTL_MS) this.meta.delete(hex)
     for (const map of this.seen.values()) for (const [hex, t] of map) if (now - t > SEEN_WINDOW_MS) map.delete(hex)
     for (const [hex, t] of this.tombstones) {

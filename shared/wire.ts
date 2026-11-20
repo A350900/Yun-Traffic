@@ -97,8 +97,19 @@ export interface FlightInfo {
    * `plausible`: false when the aircraft's position doesn't fit the route (stale database entry).
    * `verified`: the departure airport was checked against where the aircraft actually took off.
    * `reversed`: the database had this flight number the other way round (the return leg); swapped to match the aircraft's heading.
+   * `destination` null: departure seen, destination unknown (the listed route didn't fit).
    */
-  route: { origin: AirportInfo; destination: AirportInfo; plausible: boolean; originCorrected: boolean; verified: boolean; reversed?: boolean } | null
+  route: {
+    origin: AirportInfo
+    /** null: we saw where it took off, but the listed destination doesn't fit (see `listed`) */
+    destination: AirportInfo | null
+    plausible: boolean
+    originCorrected: boolean
+    verified: boolean
+    reversed?: boolean
+    /** the database's route, when it was set aside */
+    listed?: { origin: AirportInfo; destination: AirportInfo }
+  } | null
 }
 
 /** planespotters.net photo (GET /api/photo/:hex); must be shown with the photographer credit and link */

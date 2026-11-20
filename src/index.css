@@ -659,3 +659,5 @@ button { font: inherit; color: inherit; cursor: pointer; }
   cursor: pointer;
 }
 .dialog-close:hover { background: var(--panel-hover); color: var(--text); }
+
+.route-end.unknown .route-code { color: var(--text-dim); }

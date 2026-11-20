@@ -45,7 +45,15 @@ function zoneLabel(tz: string | null, now: number) {
   }
 }
 
-function AirportSide({ a, now, align }: { a: AirportInfo; now: number; align: 'left' | 'right' }) {
+function AirportSide({ a, now, align }: { a: AirportInfo | null; now: number; align: 'left' | 'right' }) {
+  if (!a)
+    return (
+      <div className={`route-end ${align} unknown`}>
+        <span className="route-code">???</span>
+        <span className="route-city">Destination unknown</span>
+        <span className="route-tz" />
+      </div>
+    )
   return (
     <div className={`route-end ${align}`} title={a.name}>
       <span className="route-code">{a.iata ?? a.icao}</span>
@@ -77,7 +85,7 @@ export default function FlightPanel({ aircraft: ac, hex, now, selection, units, 
   const listedRoute = info?.route ?? null
   const route = listedRoute?.plausible ? listedRoute : null
   let progress: { flownKm: number; leftKm: number; frac: number; elapsed: string | null; eta: string | null } | null = null
-  if (route && ac) {
+  if (route?.destination && ac) {
     const [lon, lat] = extrapolate(ac, now)
     const flownKm = distanceKm(route.origin.lat, route.origin.lon, lat, lon)
     const leftKm = distanceKm(lat, lon, route.destination.lat, route.destination.lon)
@@ -137,13 +145,20 @@ export default function FlightPanel({ aircraft: ac, hex, now, selection, units, 
             {!sel.originChecked && <p className="route-note info checking">Checking departure airport…</p>}
             {route.originCorrected && <p className="route-note info">Departure airport taken from where this aircraft took off.</p>}
             {route.reversed && <p className="route-note info">Shown the right way round: this flight number is listed for the return leg.</p>}
+            {!route.destination && (
+              <p className="route-note info">
+                Departure taken from where this aircraft took off.
+                {route.listed &&
+                  ` The listed route (${route.listed.origin.iata ?? route.listed.origin.icao} → ${route.listed.destination.iata ?? route.listed.destination.icao}) doesn't match this flight, so the destination is unknown.`}
+              </p>
+            )}
           </>
         ) : (
           <>
             <p className="route-empty">{loading ? <span className="skeleton" style={{ width: 160 }} /> : 'Route not available'}</p>
             {listedRoute && (
               <p className="route-note">
-                Listed as {listedRoute.origin.iata ?? listedRoute.origin.icao} → {listedRoute.destination.iata ?? listedRoute.destination.icao}, but
+                Listed as {listedRoute.origin.iata ?? listedRoute.origin.icao} → {listedRoute.destination?.iata ?? listedRoute.destination?.icao ?? "?"}, but
                 that doesn't match where this aircraft is (flight numbers get reused), so it's likely out of date.
               </p>
             )}

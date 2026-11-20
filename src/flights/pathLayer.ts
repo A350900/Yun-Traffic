@@ -140,11 +140,14 @@ export function updatePath(map: MLMap, trace: FlightTrace | null, info: FlightIn
   const remaining: Feature[] = []
   const airports: Feature[] = []
   if (route) {
-    const dest = route.destination
+    const dest = route.destination // null: departure seen, destination unknown
     const from = pts.length ? pts[pts.length - 1] : [route.origin.lon, route.origin.lat]
-    const line = greatCircle(from[1], ((from[0] + 540) % 360) - 180, dest.lat, dest.lon, from[0])
-    remaining.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line } })
-    const endLon = line[line.length - 1][0]
+    let endLon = 0
+    if (dest) {
+      const line = greatCircle(from[1], ((from[0] + 540) % 360) - 180, dest.lat, dest.lon, from[0])
+      remaining.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line } })
+      endLon = line[line.length - 1][0]
+    }
     // Put the origin marker on the same "copy" of the world as the start of the path.
     let startLon = route.origin.lon
     if (pts.length) {
@@ -160,10 +163,8 @@ export function updatePath(map: MLMap, trace: FlightTrace | null, info: FlightIn
         geometry: { type: 'LineString', coordinates: greatCircle(route.origin.lat, startLon, first[1], pts[0][0], startLon) },
       })
     }
-    airports.push(
-      { type: 'Feature', properties: { code: route.origin.iata ?? route.origin.icao }, geometry: { type: 'Point', coordinates: [startLon, route.origin.lat] } },
-      { type: 'Feature', properties: { code: dest.iata ?? dest.icao }, geometry: { type: 'Point', coordinates: [endLon, dest.lat] } },
-    )
+    airports.push({ type: 'Feature', properties: { code: route.origin.iata ?? route.origin.icao }, geometry: { type: 'Point', coordinates: [startLon, route.origin.lat] } })
+    if (dest) airports.push({ type: 'Feature', properties: { code: dest.iata ?? dest.icao }, geometry: { type: 'Point', coordinates: [endLon, dest.lat] } })
   }
   set(map, REMAINING, { type: 'FeatureCollection', features: remaining })
   set(map, AIRPORTS, { type: 'FeatureCollection', features: airports })
