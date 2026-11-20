@@ -44,8 +44,9 @@ export default function App() {
   const selectedAc = selected ? feed?.aircraft.get(selected) : undefined
   const selectedCallsign = selectedAc?.[F.Callsign] || null
   const selectedType = selectedAc?.[F.Type] || null
+  const selectedReg = selectedAc?.[F.Registration] || null
   useEffect(
-    () => selection.select(selected, selectedCallsign, selectedType),
+    () => selection.select(selected, selectedCallsign, selectedType, selectedReg),
     // Only refetch when the aircraft or its callsign changes, not when the type arrives.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selection, selected, selectedCallsign],

@@ -7,7 +7,7 @@ import { AircraftStore } from './store.ts'
 import { Scheduler } from './scheduler.ts'
 import { OpenSkyPoller } from './opensky.ts'
 import { AIRPLANES_LIVE, RegionSweep } from './regionSweep.ts'
-import { flightInfo, flightTrace } from './flightInfo.ts'
+import { flightInfo, flightPhoto, flightTrace, onTraceRequest } from './flightInfo.ts'
 import { SimRecorder } from './sim/recorder.ts' // simulated traffic
 import type { AircraftResponse } from '../shared/wire.ts'
 
@@ -24,6 +24,8 @@ const store = new AircraftStore()
 setInterval(() => store.prune(), 15_000) // drop aircraft nobody has reported for 12 min
 const scheduler = new Scheduler(store)
 if (process.env.ADSBLOL_DISABLED !== '1') scheduler.start()
+// A clicked aircraft's flown path comes from adsb.lol too: give it the rate limit.
+onTraceRequest(() => scheduler.yieldFor(4000))
 const opensky = new OpenSkyPoller(store)
 opensky.start()
 // Main source: OpenSky (worldwide snapshots). Secondary sources fill in
@@ -144,7 +146,7 @@ createServer((req, res) => {
       airplanesLive: airplanesLive.status,
     })
   }
-  const detail = url.pathname.match(/^\/api\/(flight|trace)\/([0-9a-f~]{6,7})$/i)
+  const detail = url.pathname.match(/^\/api\/(flight|trace|photo)\/([0-9a-f~]{6,7})$/i)
   if (req.method === 'GET' && detail) {
     const hex = detail[2].toLowerCase()
     const ac = store.get(hex)
@@ -156,8 +158,12 @@ createServer((req, res) => {
             ac?.[8] ?? null,
             ac ? [ac[1], ac[2]] : null,
             ac?.[7] ?? ((url.searchParams.get('t') || '').trim().toUpperCase().slice(0, 4) || null),
+            ac?.[3] ?? null,
+            ac?.[5] ?? null,
           )
-        : flightTrace(hex)
+        : detail[1] === 'photo'
+          ? flightPhoto(hex, ac?.[8] ?? ((url.searchParams.get('reg') || '').trim().toUpperCase().slice(0, 12) || null))
+          : flightTrace(hex)
     job.then(
       (body) => send(req, res, 200, body),
       (err) => send(req, res, 502, { error: (err as Error).message }),

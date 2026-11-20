@@ -1,9 +1,10 @@
-import type { FlightInfo, FlightTrace } from '../../shared/wire'
+import type { FlightInfo, FlightPhoto, FlightTrace } from '../../shared/wire'
 import { distanceKm } from './geo'
 
 /**
  * Details for the selected aircraft: loaded once per selection (route,
- * airline, model, photo), with the flown path refreshed every 30 s.
+ * airline, model; the photo separately so it never holds up the route), with
+ * the flown path refreshed every 30 s.
  * Shared by the details panel and the map's path layer.
  */
 
@@ -12,15 +13,17 @@ export interface SelectionState {
   info: FlightInfo | null
   infoLoading: boolean
   trace: FlightTrace | null
+  /** undefined while loading */
+  photo: FlightPhoto | undefined
   /** Departure airport checked against the flown path (by the server or here) */
   originChecked: boolean
 }
 
 const TRACE_REFRESH_MS = 30_000
-const TRACE_RETRY_MS = 5000
+const TRACE_RETRY_MS = 2500
 
 export class SelectionStore {
-  private state: SelectionState = { hex: null, info: null, infoLoading: false, trace: null, originChecked: false }
+  private state: SelectionState = { hex: null, info: null, infoLoading: false, trace: null, photo: undefined, originChecked: false }
   private listeners = new Set<() => void>()
   private traceTimer = 0
   private retryTimer = 0
@@ -38,18 +41,25 @@ export class SelectionStore {
   }
 
   /** Select an aircraft (or null). `callsign` lets us refetch if it changes mid-flight. */
-  select(hex: string | null, callsign: string | null, typeCode: string | null = null) {
+  select(hex: string | null, callsign: string | null, typeCode: string | null = null, reg: string | null = null) {
     if (hex === this.state.hex && callsign === this.callsign) return
     const sameAircraft = hex === this.state.hex
     this.callsign = callsign
     this.aborter?.abort()
     clearInterval(this.traceTimer)
     clearTimeout(this.retryTimer)
-    if (!hex) return this.set({ hex: null, info: null, infoLoading: false, trace: null, originChecked: false })
+    if (!hex) return this.set({ hex: null, info: null, infoLoading: false, trace: null, photo: undefined, originChecked: false })
 
     this.aborter = new AbortController()
     const signal = this.aborter.signal
-    this.set({ hex, infoLoading: true, ...(sameAircraft ? {} : { info: null, trace: null, originChecked: false }) })
+    this.set({ hex, infoLoading: true, ...(sameAircraft ? {} : { info: null, trace: null, photo: undefined, originChecked: false }) })
+
+    if (!sameAircraft) {
+      fetch(`/api/photo/${hex}${reg ? `?reg=${encodeURIComponent(reg)}` : ''}`, { signal })
+        .then((r) => (r.ok ? (r.json() as Promise<FlightPhoto>) : null))
+        .then((photo) => !signal.aborted && this.set({ photo }))
+        .catch(() => !signal.aborted && this.set({ photo: null }))
+    }
 
     const params = new URLSearchParams()
     if (callsign) params.set('cs', callsign)

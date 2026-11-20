@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import { aircraftName } from './aircraftTypes.ts'
-import type { FlightInfo, AirportInfo, FlightTrace } from '../shared/wire.ts'
+import type { FlightInfo, AirportInfo, FlightTrace, FlightPhoto } from '../shared/wire.ts'
 
 /**
  * Details for one aircraft, gathered when someone clicks it:
@@ -111,7 +111,7 @@ interface AdsbdbAirline {
 const routeCache = new Cache<{ airline: AdsbdbAirline | null; origin: AirportInfo; destination: AirportInfo } | null>()
 const airlineCache = new Cache<AdsbdbAirline | null>()
 const aircraftCache = new Cache<{ type: string; icao_type: string; manufacturer: string; registration: string; registered_owner: string } | null>()
-const photoCache = new Cache<FlightInfo['photo']>()
+const photoCache = new Cache<FlightPhoto>()
 
 function route(callsign: string) {
   return routeCache.get(callsign, 6 * HOUR, async () => {
@@ -150,6 +150,15 @@ function photo(hex: string, reg: string | null) {
   })
 }
 
+/** Initial great-circle bearing from point 1 to point 2, degrees true. */
+function bearing(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const r = Math.PI / 180
+  const y = Math.sin((lon2 - lon1) * r) * Math.cos(lat2 * r)
+  const x = Math.cos(lat1 * r) * Math.sin(lat2 * r) - Math.sin(lat1 * r) * Math.cos(lat2 * r) * Math.cos((lon2 - lon1) * r)
+  return (Math.atan2(y, x) / r + 360) % 360
+}
+const angleDiff = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180)
+
 /** Great-circle distance in km. */
 export function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   const r = Math.PI / 180
@@ -171,22 +180,23 @@ export async function flightInfo(
   pos: [number, number] | null,
   /** Type code from the live data, used when the aircraft database has no record */
   liveType: string | null = null,
+  /** live track (degrees) and altitude (ft, -1 = ground), for the direction check */
+  track: number | null = null,
+  altitude: number | null = null,
 ): Promise<FlightInfo> {
   const airlinePrefix = callsign?.match(/^([A-Z]{3})\d/)?.[1] ?? null
   // Everything at once. The flown path is only used to double-check the
   // departure airport, so don't wait more than a moment for it; if it arrives
   // later the panel asks again and gets the corrected answer from the cache.
-  const [r0, al, ac, phHex, tr] = await Promise.all([
+  // (The photo has its own endpoint so a slow photo service never holds up the route.)
+  const [r0, al, ac, tr] = await Promise.all([
     callsign ? settle(route(callsign)) : null,
     airlinePrefix ? settle(airline(airlinePrefix)) : null,
     settle(aircraft(hex)),
-    settle(photo(hex, null)),
-    Promise.race([settle(flightTrace(hex)), new Promise<null>((r) => setTimeout(() => r(null), 1500))]),
+    Promise.race([settle(flightTrace(hex)), new Promise<null>((r) => setTimeout(() => r(null), 600))]),
   ])
   const registration = reg ?? ac?.registration ?? tr?.aircraft?.registration ?? null
   const typeCode = ac?.icao_type ?? liveType ?? tr?.aircraft?.type ?? null
-  // Photo by registration only if the hex lookup found nothing.
-  const ph = phHex ?? (registration ? await settle(photo(hex, registration)) : null)
 
   // The callsign database is crowd-sourced and can be stale. If we saw where
   // this aircraft actually took off and it's a different airport, trust that.
@@ -203,11 +213,32 @@ export async function flightInfo(
     }
   }
 
+  // Flight numbers get reused, and the database often has a flight the other way
+  // round (the return leg). Both pass the "is it on the path" test, so also check
+  // which way it's heading: towards the listed origin = reversed; away from both = wrong.
+  let reversed = false
+  let headingOk = true
+  if (r && pos && track != null && altitude != null && altitude > 10000 && !originCorrected) {
+    const dDest = distanceKm(pos[0], pos[1], r.destination.lat, r.destination.lon)
+    const dOrig = distanceKm(pos[0], pos[1], r.origin.lat, r.origin.lon)
+    // Away from airports only (departure/arrival turns, holding).
+    if (dDest > 250 && dOrig > 250) {
+      const offDest = angleDiff(track, bearing(pos[0], pos[1], r.destination.lat, r.destination.lon))
+      const offOrig = angleDiff(track, bearing(pos[0], pos[1], r.origin.lat, r.origin.lon))
+      if (offDest > 100) {
+        if (offOrig < 50) {
+          r = { ...r, origin: r.destination, destination: r.origin }
+          reversed = true
+        } else headingOk = false
+      }
+    }
+  }
+
   let routeOk = false
   if (r && pos) {
     const total = distanceKm(r.origin.lat, r.origin.lon, r.destination.lat, r.destination.lon)
     const via = distanceKm(r.origin.lat, r.origin.lon, pos[0], pos[1]) + distanceKm(pos[0], pos[1], r.destination.lat, r.destination.lon)
-    routeOk = via <= total * 1.2 + 200
+    routeOk = headingOk && via <= total * 1.2 + 200
   }
 
   const airlineInfo = r?.airline ?? al
@@ -221,9 +252,16 @@ export async function flightInfo(
       registration,
       owner: ac?.registered_owner ?? null,
     },
-    route: r ? { origin: r.origin, destination: r.destination, plausible: routeOk, originCorrected, verified: Boolean(tr) } : null,
-    photo: ph,
+    route: r ? { origin: r.origin, destination: r.destination, plausible: routeOk, originCorrected, verified: Boolean(tr && !tr.partial), reversed } : null,
   }
+}
+
+/** Photo for the details panel: by ICAO hex, else by registration (from the live data or the aircraft database). */
+export async function flightPhoto(hex: string, reg: string | null): Promise<FlightPhoto> {
+  const byHex = await settle(photo(hex, null))
+  if (byHex) return byHex
+  const registration = reg ?? (await settle(aircraft(hex)))?.registration ?? null
+  return registration ? await settle(photo(hex, registration)) : null
 }
 
 // ---------------------------------------------------------------- flown path
@@ -241,9 +279,27 @@ interface RawTrace {
 const fullTraceCache = new Cache<RawTrace | null>(500)
 const recentTraceCache = new Cache<RawTrace | null>(500)
 
+/** Called before each trace request (lets the server pause its own background polling of the same API). */
+let beforeTraceRequest = () => {}
+export function onTraceRequest(fn: () => void) {
+  beforeTraceRequest = fn
+}
+
 async function getTrace(kind: 'full' | 'recent', hex: string): Promise<RawTrace | null> {
+  // adsb.lol rate-limits per client; a quick retry usually gets through.
+  for (const delay of [0, 700, 1600]) {
+    if (delay) await new Promise((r) => setTimeout(r, delay))
+    beforeTraceRequest()
+    const t = await getTraceOnce(kind, hex)
+    if (t !== 'rate-limited') return t
+  }
+  throw new Error('adsb.lol trace: rate limited')
+}
+
+async function getTraceOnce(kind: 'full' | 'recent', hex: string): Promise<RawTrace | null | 'rate-limited'> {
   const res = await fetch(`https://api.adsb.lol/1/trace/${kind}/${encodeURIComponent(hex)}`, { headers: UA, signal: AbortSignal.timeout(SOURCE_TIMEOUT_MS) })
   if (res.status === 404) return null
+  if (res.status === 429) return 'rate-limited'
   if (!res.ok) throw new Error(`adsb.lol trace HTTP ${res.status}`)
   const buf = Buffer.from(await res.arrayBuffer())
   // Usually served gzip-encoded; fetch may or may not have unpacked it already.

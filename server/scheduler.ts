@@ -74,6 +74,11 @@ export class Scheduler {
     loop()
   }
 
+  /** Hold off background requests for a moment (someone is looking at one aircraft: its details go first). */
+  yieldFor(ms: number) {
+    this.pausedUntil = Math.max(this.pausedUntil, Date.now() + ms)
+  }
+
   stop() {
     if (this.timer) clearTimeout(this.timer)
   }

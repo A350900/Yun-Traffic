@@ -96,11 +96,13 @@ export interface FlightInfo {
   /**
    * `plausible`: false when the aircraft's position doesn't fit the route (stale database entry).
    * `verified`: the departure airport was checked against where the aircraft actually took off.
+   * `reversed`: the database had this flight number the other way round (the return leg); swapped to match the aircraft's heading.
    */
-  route: { origin: AirportInfo; destination: AirportInfo; plausible: boolean; originCorrected: boolean; verified: boolean } | null
-  /** planespotters.net photo; must be shown with the photographer credit and link */
-  photo: { src: string; link: string; photographer: string } | null
+  route: { origin: AirportInfo; destination: AirportInfo; plausible: boolean; originCorrected: boolean; verified: boolean; reversed?: boolean } | null
 }
+
+/** planespotters.net photo (GET /api/photo/:hex); must be shown with the photographer credit and link */
+export type FlightPhoto = { src: string; link: string; photographer: string } | null
 
 export interface FlightTrace {
   hex: string

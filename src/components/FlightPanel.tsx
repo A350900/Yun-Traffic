@@ -73,7 +73,9 @@ export default function FlightPanel({ aircraft: ac, hex, now, selection, units, 
   const subtitle = [info?.airline?.name, info?.aircraft.name ?? typeCode].filter(Boolean)
 
   // Progress along the route, from the aircraft's current (estimated) position.
-  const route = info?.route ?? null
+  // A route that doesn't match where the aircraft is would only mislead: show it as unknown.
+  const listedRoute = info?.route ?? null
+  const route = listedRoute?.plausible ? listedRoute : null
   let progress: { flownKm: number; leftKm: number; frac: number; elapsed: string | null; eta: string | null } | null = null
   if (route && ac) {
     const [lon, lat] = extrapolate(ac, now)
@@ -132,29 +134,32 @@ export default function FlightPanel({ aircraft: ac, hex, now, selection, units, 
                 </div>
               </div>
             )}
-            {route.plausible && !sel.originChecked && <p className="route-note info checking">Checking departure airport…</p>}
-            {(!route.plausible || route.originCorrected) && (
-              <p className={`route-note${route.plausible ? ' info' : ''}`}>
-                {!route.plausible
-                  ? 'This route may be out of date: the aircraft is off its path.'
-                  : 'Departure airport taken from where this aircraft took off.'}
+            {!sel.originChecked && <p className="route-note info checking">Checking departure airport…</p>}
+            {route.originCorrected && <p className="route-note info">Departure airport taken from where this aircraft took off.</p>}
+            {route.reversed && <p className="route-note info">Shown the right way round: this flight number is listed for the return leg.</p>}
+          </>
+        ) : (
+          <>
+            <p className="route-empty">{loading ? <span className="skeleton" style={{ width: 160 }} /> : 'Route not available'}</p>
+            {listedRoute && (
+              <p className="route-note">
+                Listed as {listedRoute.origin.iata ?? listedRoute.origin.icao} → {listedRoute.destination.iata ?? listedRoute.destination.icao}, but
+                that doesn't match where this aircraft is (flight numbers get reused), so it's likely out of date.
               </p>
             )}
           </>
-        ) : (
-          <p className="route-empty">{loading ? <span className="skeleton" style={{ width: 160 }} /> : 'Route not available'}</p>
         )}
       </section>
 
       {/* Photo */}
-      {info?.photo ? (
-        <a className="fp-photo" href={info.photo.link} target="_blank" rel="noreferrer" title="View on Planespotters.net">
-          <img src={info.photo.src} alt={`${reg ?? ''} ${info.aircraft.name ?? ''}`.trim()} loading="lazy" />
-          <span className="photo-credit">© {info.photo.photographer} · Planespotters.net</span>
+      {sel.hex === hex && sel.photo ? (
+        <a className="fp-photo" href={sel.photo.link} target="_blank" rel="noreferrer" title="View on Planespotters.net">
+          <img src={sel.photo.src} alt={`${reg ?? ''} ${info?.aircraft.name ?? ''}`.trim()} loading="lazy" />
+          <span className="photo-credit">© {sel.photo.photographer} · Planespotters.net</span>
         </a>
       ) : (
         <div className="fp-photo empty">
-          {loading ? (
+          {sel.hex === hex && sel.photo === undefined ? (
             <span className="skeleton" style={{ width: '100%', height: '100%', borderRadius: 0 }} />
           ) : (
             <>
