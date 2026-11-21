@@ -12,11 +12,13 @@ import { AIRPORT_LAYER } from './airports'
 
 const SOURCE = 'country-airlines'
 export const COUNTRY_AIRLINES_LAYER = 'country-airlines'
-const PX = 2
-const SLOT_W = 58
-const SLOT_H = 30
-const GAP = 4
-const PAD = 5
+// Drawn at about the size it's shown at the default zoom (scaled only ~0.85-1.25x
+// with zoom), at extra resolution for the screen, so text stays crisp.
+const PX = Math.min(4, Math.ceil((window.devicePixelRatio || 1) * 1.5))
+const SLOT_W = 50
+const SLOT_H = 26
+const GAP = 3
+const PAD = 4
 
 type Country = { iso: string; name: string; lon: number; lat: number; areaKm2: number; airlines: [string, string][] }
 type LogoIndex = Record<string, { src: string }>
@@ -43,8 +45,8 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 
 /** The airline's name, shrunk (and split over two lines if needed) to fit a tile. */
 function drawName(ctx: CanvasRenderingContext2D, name: string, x: number, y: number, font: string) {
-  const maxW = SLOT_W - 6
-  for (let size = 11; size >= 6.5; size -= 0.5) {
+  const maxW = SLOT_W - 5
+  for (let size = 10.5; size >= 7.5; size -= 0.5) {
     ctx.font = `600 ${size}px ${font}`
     if (ctx.measureText(name).width <= maxW) {
       ctx.fillText(name, x + SLOT_W / 2, y + SLOT_H / 2)
@@ -52,7 +54,7 @@ function drawName(ctx: CanvasRenderingContext2D, name: string, x: number, y: num
     }
     // two lines, split at the space nearest the middle
     const words = name.split(' ')
-    if (words.length > 1 && size <= 9.5) {
+    if (words.length > 1 && size <= 9) {
       let bestCut = 1
       let bestDiff = Infinity
       for (let i = 1; i < words.length; i++) {
@@ -68,7 +70,8 @@ function drawName(ctx: CanvasRenderingContext2D, name: string, x: number, y: num
       }
     }
   }
-  ctx.fillText(name.slice(0, 9) + '…', x + SLOT_W / 2, y + SLOT_H / 2)
+  ctx.font = `600 7.5px ${font}`
+  ctx.fillText(name.slice(0, 8) + '…', x + SLOT_W / 2, y + SLOT_H / 2)
 }
 
 function drawStack(c: Country, font: string): ImageData {
@@ -81,7 +84,7 @@ function drawStack(c: Country, font: string): ImageData {
   const ctx = canvas.getContext('2d')!
   ctx.scale(PX, PX)
   // card
-  roundRect(ctx, 0.5, 0.5, w - 1, h - 1, 9)
+  roundRect(ctx, 0.5, 0.5, w - 1, h - 1, 8)
   ctx.fillStyle = 'rgba(22, 20, 29, 0.92)' // --panel-solid
   ctx.fill()
   ctx.strokeStyle = 'rgba(242, 198, 210, 0.35)' // --brand-soft, faint
@@ -91,15 +94,16 @@ function drawStack(c: Country, font: string): ImageData {
   c.airlines.forEach(([code, name], i) => {
     const x = PAD + i * (SLOT_W + GAP)
     const y = PAD
-    roundRect(ctx, x, y, SLOT_W, SLOT_H, 6)
+    roundRect(ctx, x, y, SLOT_W, SLOT_H, 5)
     ctx.fillStyle = '#fbf7f8'
     ctx.fill()
     const img = images.get(code)
     if (img && img.naturalWidth) {
-      const pad = 3
+      const pad = 2.5
       const s = Math.min((SLOT_W - pad * 2) / img.naturalWidth, (SLOT_H - pad * 2) / img.naturalHeight)
       const iw = img.naturalWidth * s
       const ih = img.naturalHeight * s
+      ctx.imageSmoothingQuality = 'high'
       ctx.drawImage(img, x + (SLOT_W - iw) / 2, y + (SLOT_H - ih) / 2, iw, ih)
     } else {
       ctx.fillStyle = '#3d1426' // --brand-ink
@@ -111,8 +115,8 @@ function drawStack(c: Country, font: string): ImageData {
   return ctx.getImageData(0, 0, w * PX, h * PX)
 }
 
-/** Stack scale by land area: ~0.55 for city-states up to ~1.05 for the largest countries. */
-const sizeFor = (areaKm2: number) => Math.max(0.55, Math.min(1.05, 0.4 + 0.1 * Math.log10(Math.max(areaKm2, 10))))
+/** Stack scale by land area: 0.8 for city-states up to 1 for large countries (kept readable). */
+const sizeFor = (areaKm2: number) => Math.max(0.8, Math.min(1, 0.6 + 0.07 * Math.log10(Math.max(areaKm2, 10))))
 
 function putImages(map: MLMap) {
   const font = getComputedStyle(document.body).fontFamily || 'sans-serif'
@@ -172,7 +176,7 @@ async function add(map: MLMap) {
         minzoom: 1.7, // same as the airport pins
         layout: {
           'icon-image': ['concat', 'ca-', ['get', 'iso']],
-          'icon-size': ['interpolate', ['linear'], ['zoom'], 1.7, ['*', 0.5, ['get', 'k']], 4, ['*', 0.75, ['get', 'k']], 6, ['get', 'k']] as unknown as ExpressionSpecification,
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 1.7, ['*', 0.85, ['get', 'k']], 2.2, ['*', 0.95, ['get', 'k']], 4, ['*', 1.05, ['get', 'k']], 6, ['*', 1.25, ['get', 'k']]] as unknown as ExpressionSpecification,
           'icon-allow-overlap': false, // overlapping stacks: the bigger country is shown
           'icon-padding': 3,
           'symbol-sort-key': ['get', 'rank'],
