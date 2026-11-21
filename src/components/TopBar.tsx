@@ -1,7 +1,8 @@
-import { memo, useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { THEMES, ACTIVE_THEME } from '../config/theme'
 import { CLOCKS } from '../config/clocks'
-import { MenuIcon, SearchIcon, UserIcon } from './Icons'
+import { BookIcon, MenuIcon, RadarIcon, SearchIcon, UserIcon } from './Icons'
+import type { AppMode } from '../state/settings'
 
 /** Ticks on each new minute (plus once a second until aligned). */
 function useMinuteClock() {
@@ -61,7 +62,33 @@ function WorldClocks() {
   )
 }
 
-function TopBar() {
+const MODES: { id: AppMode; label: string; icon: ReactNode; hint: string }[] = [
+  { id: 'tracking', label: 'Tracking', icon: <RadarIcon width={17} height={17} />, hint: 'Live and simulated flights' },
+  { id: 'encyclopedia', label: 'Encyclopedia', icon: <BookIcon width={17} height={17} />, hint: 'The map and its reference layers, without traffic' },
+]
+
+/** Tracking / Encyclopedia switch. */
+function ModeSwitch({ mode, onChange }: { mode: AppMode; onChange: (m: AppMode) => void }) {
+  return (
+    <div className="mode-switch" role="radiogroup" aria-label="Mode">
+      {MODES.map((m) => (
+        <button
+          key={m.id}
+          role="radio"
+          aria-checked={mode === m.id}
+          className={mode === m.id ? 'on' : ''}
+          title={`${m.label}: ${m.hint}`}
+          onClick={() => onChange(m.id)}
+        >
+          {m.icon}
+          <span>{m.label}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function TopBar({ mode, onModeChange }: { mode: AppMode; onModeChange: (m: AppMode) => void }) {
   return (
     <header className="topbar">
       <a className="brand" href="/" aria-label="Yún Traffic home">
@@ -71,6 +98,7 @@ function TopBar() {
       <WorldClocks />
 
       <div className="topbar-right">
+        <ModeSwitch mode={mode} onChange={onModeChange} />
         <label className="search">
           <SearchIcon />
           <input type="search" placeholder="Search" />

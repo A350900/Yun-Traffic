@@ -18,15 +18,21 @@ const synthetic = new URLSearchParams(location.search).has('stress')
 export default function App() {
   const [selected, setSelected] = useState<string | null>(null)
   const [selectedAirport, setSelectedAirport] = useState<string | null>(null)
-  const [layers, setLayers] = useLayerSettings()
   const [settings, setSettings] = useSettings()
+  // Layer choices are kept per mode (Encyclopedia starts with everything on but weather).
+  const [trackingLayers, setTrackingLayers] = useLayerSettings('tracking')
+  const [encyclopediaLayers, setEncyclopediaLayers] = useLayerSettings('encyclopedia')
+  const layers = settings.mode === 'tracking' ? trackingLayers : encyclopediaLayers
+  const setLayers = settings.mode === 'tracking' ? setTrackingLayers : setEncyclopediaLayers
   const [selection] = useState(() => new SelectionStore())
+  const tracking = settings.mode === 'tracking'
   const [sim] = useState(() => new SimController()) // simulated traffic
+  const simOn = settings.simTraffic && tracking
   // Start preparing simulated traffic right away, in parallel with the map loading.
   useEffect(() => {
-    if (settings.simTraffic) sim.preload()
-  }, [sim, settings.simTraffic])
-  const simShown = useSyncExternalStore(sim.subscribe, () => (settings.simTraffic ? (sim.stats?.shown ?? 0) : 0))
+    if (simOn) sim.preload()
+  }, [sim, simOn])
+  const simShown = useSyncExternalStore(sim.subscribe, () => (simOn ? (sim.stats?.shown ?? 0) : 0))
   const [radar] = useState(
     () => new RadarController({ visible: layers.radar, style: layers.radarStyle, opacity: layers.radarOpacity }),
   )
@@ -72,11 +78,18 @@ export default function App() {
         }}
         firBoundaries={layers.firBoundaries}
         airports={layers.airports}
+        tracking={tracking}
         onFeed={onFeed}
-        dayNight={layers.dayNight} radar={radar} selection={selection} sim={sim} simEnabled={settings.simTraffic} simShowAreas={settings.simShowAreas} />
-      <TopBar />
+        dayNight={layers.dayNight} radar={radar} selection={selection} sim={sim} simEnabled={simOn} simShowAreas={settings.simShowAreas} />
+      <TopBar
+        mode={settings.mode}
+        onModeChange={(mode) => {
+          setSettings({ ...settings, mode })
+          if (mode !== 'tracking') setSelected(null) // no traffic to have selected
+        }}
+      />
       {selectedAirport && !selected && <AirportPanel icao={selectedAirport} now={serverNow} onClose={() => setSelectedAirport(null)} />}
-      {selected && (
+      {selected && tracking && (
         <FlightPanel
           hex={selected}
           aircraft={feed?.aircraft.get(selected)}
@@ -86,14 +99,14 @@ export default function App() {
           onClose={() => setSelected(null)}
         />
       )}
-      <FeedStatus
+      {tracking && <FeedStatus
         count={feed?.aircraft.size ?? 0}
         simulated={simShown}
         stats={feed?.stats ?? null}
         error={feed?.error ?? null}
         now={serverNow}
         synthetic={synthetic}
-      />
+      />}
       <BottomDock layers={layers} onLayersChange={setLayers} radar={radar} settings={settings} onSettingsChange={setSettings} />
     </main>
   )

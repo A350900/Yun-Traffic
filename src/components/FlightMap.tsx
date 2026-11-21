@@ -69,6 +69,8 @@ interface Props {
   firBoundaries: boolean
   /** Show the busiest-airport pins */
   airports: boolean
+  /** Tracking mode: live/simulated traffic shown and updated. Off = Encyclopedia mode (no traffic). */
+  tracking: boolean
   onFeed: (state: FeedState) => void
   /** Show the day/night (solar terminator) overlay */
   dayNight: boolean
@@ -80,6 +82,12 @@ interface Props {
   simShowAreas: boolean
 }
 
+/** Everything that shows traffic: live aircraft (icons, labels, selection), flight paths, simulated aircraft. */
+const isTrafficLayer = (id: string) => id.startsWith('aircraft-') || id.startsWith('path-') || id === 'sim-icons'
+function setTrafficVisible(map: MLMap, visible: boolean) {
+  for (const l of map.getStyle().layers) if (isTrafficLayer(l.id)) map.setLayoutProperty(l.id, 'visibility', visible ? 'visible' : 'none')
+}
+
 /** Rough radius of the visible area in nautical miles. */
 function focusFor(map: MLMap): FocusHint | null {
   if (map.getZoom() < FOCUS_MIN_ZOOM) return null
@@ -89,12 +97,16 @@ function focusFor(map: MLMap): FocusHint | null {
   return { lat: c.lat, lon: c.lng, radiusNm: Math.max(radiusNm, 25) }
 }
 
-function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, onFeed, dayNight, radar, selection, sim, simEnabled, simShowAreas }: Props) {
+function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, tracking, onFeed, dayNight, radar, selection, sim, simEnabled, simShowAreas }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
   const onSelectRef = useRef(onSelect)
   const onSelectAirportRef = useRef(onSelectAirport)
   onSelectAirportRef.current = onSelectAirport
+  const trackingRef = useRef(tracking)
+  trackingRef.current = tracking
+  /** live feed controls + "redraw everything" for the mode effect below */
+  const trafficRef = useRef<{ setPaused: (p: boolean) => void; redrawAll: () => void } | null>(null)
   const airportsRef = useRef(airports)
   airportsRef.current = airports
   const firRef = useRef(firBoundaries)
@@ -216,7 +228,7 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, onFeed,
     // change something. Groups come due a fraction of the interval apart.
     let simForce = false // simulated traffic: refresh after the view changes
     const tick = () => {
-      if (document.hidden || !map.getSource('aircraft-0')) return
+      if (document.hidden || !map.getSource('aircraft-0') || !trackingRef.current) return
       if (selection.getState().hex && performance.now() - lastPathDraw >= 1000) drawSelection()
       // simulated traffic: computed in a worker; held during gestures when zoomed out (like live)
       if (sim.enabled && !(map.isMoving() && !viewWindow(map))) {
@@ -255,6 +267,15 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, onFeed,
     document.addEventListener('visibilitychange', onVisible)
     // --------------------------------------------------------------------
 
+    trafficRef.current = {
+      setPaused: (p) => feed.setPaused(p),
+      redrawAll: () => {
+        refreshAll = true
+        simForce = true
+      },
+    }
+    if (!trackingRef.current) feed.setPaused(true)
+
     map.on('style.load', () => {
       // Day/night first so it sits underneath the aircraft.
       addDayNightLayer(map, dayNightRef.current)
@@ -265,6 +286,7 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, onFeed,
       if (simEnabledRef.current) sim.enable(map, ICON_LAYERS[0]) // simulated traffic, under live aircraft
       addAirportLayer(map) // busiest airports: on top
       setAirportsVisible(map, airportsRef.current)
+      setTrafficVisible(map, trackingRef.current)
       if (firRef.current) setFirVisible(map, true, ICON_LAYERS[0]) // control boundaries, under everything of ours
       drawAllProgressively()
       renderTimer = window.setInterval(tick, TICK_MS)
@@ -312,6 +334,15 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, onFeed,
     const map = mapRef.current
     if (map) setAirportsVisible(map, airports)
   }, [airports])
+
+  // Tracking / Encyclopedia: show or hide all traffic, and pause the live feed
+  // (nothing is fetched or drawn for traffic in Encyclopedia mode).
+  useEffect(() => {
+    const map = mapRef.current
+    trafficRef.current?.setPaused(!tracking)
+    if (map?.getSource('aircraft-0')) setTrafficVisible(map, tracking)
+    if (tracking) trafficRef.current?.redrawAll()
+  }, [tracking])
 
   useEffect(() => {
     const map = mapRef.current

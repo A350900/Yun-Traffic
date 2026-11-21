@@ -13,31 +13,37 @@ export interface LayerSettings {
   firBoundaries: boolean
 }
 
-const DEFAULTS: LayerSettings = { dayNight: true, radar: false, radarStyle: 'cartoon', radarOpacity: 0.85, firBoundaries: false, airports: true }
-const KEY = 'yun.layers'
-/** Bump to reset layers whose default changed (2: control boundaries back to off). */
+import type { AppMode } from './settings'
+
+/** Each mode keeps its own layer choices. Encyclopedia: everything on except weather. */
+const DEFAULTS: Record<AppMode, LayerSettings> = {
+  tracking: { dayNight: true, radar: false, radarStyle: 'cartoon', radarOpacity: 0.85, firBoundaries: false, airports: true },
+  encyclopedia: { dayNight: true, radar: false, radarStyle: 'cartoon', radarOpacity: 0.85, firBoundaries: true, airports: true },
+}
+const KEYS: Record<AppMode, string> = { tracking: 'yun.layers', encyclopedia: 'yun.layers.encyclopedia' }
+/** Bump to reset layers whose default changed (2: control boundaries back to off in Tracking). */
 const VERSION = 2
 
-function load(): LayerSettings {
+function load(mode: AppMode): LayerSettings {
   try {
-    const stored = JSON.parse(localStorage.getItem(KEY) ?? '{}')
-    if ((stored.v ?? 1) < 2) delete stored.firBoundaries
+    const stored = JSON.parse(localStorage.getItem(KEYS[mode]) ?? '{}')
+    if (mode === 'tracking' && (stored.v ?? 1) < 2) delete stored.firBoundaries
     delete stored.v
-    return { ...DEFAULTS, ...stored }
+    return { ...DEFAULTS[mode], ...stored }
   } catch {
-    return DEFAULTS
+    return DEFAULTS[mode]
   }
 }
 
-/** Layer toggles, remembered in this browser between visits. */
-export function useLayerSettings() {
-  const [layers, setLayers] = useState<LayerSettings>(load)
+/** Layer toggles for one mode, remembered in this browser between visits. */
+export function useLayerSettings(mode: AppMode) {
+  const [layers, setLayers] = useState<LayerSettings>(() => load(mode))
   useEffect(() => {
     try {
-      localStorage.setItem(KEY, JSON.stringify({ ...layers, v: VERSION }))
+      localStorage.setItem(KEYS[mode], JSON.stringify({ ...layers, v: VERSION }))
     } catch {
       /* storage unavailable (private mode etc.) — settings just won't persist */
     }
-  }, [layers])
+  }, [layers, mode])
   return [layers, setLayers] as const
 }

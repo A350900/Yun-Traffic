@@ -677,3 +677,36 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .fact-value { font-size: 14px; }
 .fact-value .dim { color: var(--text-dim); font-size: 12px; margin-left: 4px; }
 .airport-note { margin: 0; font-size: 12px; color: var(--text-dim); }
+
+/* ---------- Tracking / Encyclopedia switch ---------- */
+.mode-switch {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  margin-right: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+}
+.mode-switch button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 13px 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.mode-switch button:hover { color: var(--text); }
+.mode-switch button.on { background: rgba(200, 69, 107, 0.22); color: var(--brand-soft); }
+.mode-switch button.on svg { color: var(--brand); }
+@media (max-width: 1180px) {
+  .mode-switch button { padding: 0 9px; }
+  .mode-switch button span { display: none; }
+}

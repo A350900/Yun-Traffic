@@ -34,6 +34,7 @@ export function startFeed(getFocus: () => FocusHint | null, onUpdate: (s: FeedSt
   let stopped = false
   let timer = 0
   let controller: AbortController | null = null
+  let paused = false
 
   const poll = async () => {
     const params = new URLSearchParams()
@@ -55,16 +56,16 @@ export function startFeed(getFocus: () => FocusHint | null, onUpdate: (s: FeedSt
       state.error = null
       state.revision++
     } catch (err) {
-      if (stopped) return
+      if (stopped || paused) return // aborted on purpose
       state.error = (err as Error).message
     }
     onUpdate(state)
-    if (!stopped) timer = window.setTimeout(poll, document.hidden ? HIDDEN_POLL_MS : POLL_MS)
+    if (!stopped && !paused) timer = window.setTimeout(poll, document.hidden ? HIDDEN_POLL_MS : POLL_MS)
   }
   poll()
 
   const onVisible = () => {
-    if (!document.hidden && !stopped) {
+    if (!document.hidden && !stopped && !paused) {
       clearTimeout(timer)
       poll()
     }
@@ -73,6 +74,14 @@ export function startFeed(getFocus: () => FocusHint | null, onUpdate: (s: FeedSt
 
   return {
     state,
+    /** Stop asking the server for aircraft (Encyclopedia mode), or start again. */
+    setPaused(p: boolean) {
+      if (p === paused || stopped) return
+      paused = p
+      clearTimeout(timer)
+      controller?.abort()
+      if (!paused) poll()
+    },
     stop() {
       stopped = true
       clearTimeout(timer)
@@ -116,5 +125,5 @@ export function startStressFeed(count: number, onUpdate: (s: FeedState) => void)
       ac[F.PosTime] = t
     }
   }, 60_000)
-  return { state, stop: () => clearInterval(timer) }
+  return { state, setPaused: () => {}, stop: () => clearInterval(timer) }
 }

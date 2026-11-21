@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react'
 
 export type UnitSystem = 'aviation' | 'metric' | 'imperial'
 
+export type AppMode = 'tracking' | 'encyclopedia'
+
 export interface Settings {
+  /** Tracking (live and simulated traffic) or Encyclopedia (the map and its reference layers, no traffic) */
+  mode: AppMode
   units: UnitSystem
   /** simulated traffic (beta): fill gaps in live coverage with illustrative flights */
   simTraffic: boolean
@@ -10,7 +14,7 @@ export interface Settings {
   simShowAreas: boolean
 }
 
-const DEFAULTS: Settings = { units: 'aviation', simTraffic: true, simShowAreas: false }
+const DEFAULTS: Settings = { mode: 'tracking', units: 'aviation', simTraffic: true, simShowAreas: false }
 const KEY = 'yun.settings'
 /** Bump to reset settings whose default changed (2: simulated traffic on by default). */
 const VERSION = 2
