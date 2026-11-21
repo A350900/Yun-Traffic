@@ -1,0 +1,1019 @@
+{
+ "_about": "Main airlines of each country (up to 3), for Encyclopedia mode. Curated estimate of the largest airlines by passengers/fleet (2024-25); edit freely. Airlines are [ICAO code, name]. Logos: scripts/encyclopedia/build-airline-logos.mjs.",
+ "countries": {
+  "US": [
+   [
+    "AAL",
+    "American Airlines"
+   ],
+   [
+    "DAL",
+    "Delta Air Lines"
+   ],
+   [
+    "SWA",
+    "Southwest Airlines"
+   ]
+  ],
+  "CA": [
+   [
+    "ACA",
+    "Air Canada"
+   ],
+   [
+    "WJA",
+    "WestJet"
+   ],
+   [
+    "POE",
+    "Porter Airlines"
+   ]
+  ],
+  "MX": [
+   [
+    "VOI",
+    "Volaris"
+   ],
+   [
+    "VIV",
+    "Viva Aerobus"
+   ],
+   [
+    "AMX",
+    "Aeroméxico"
+   ]
+  ],
+  "PA": [
+   [
+    "CMP",
+    "Copa Airlines"
+   ]
+  ],
+  "CU": [
+   [
+    "CUB",
+    "Cubana"
+   ]
+  ],
+  "BS": [
+   [
+    "BHS",
+    "Bahamasair"
+   ]
+  ],
+  "DO": [
+   [
+    "DWI",
+    "Arajet"
+   ]
+  ],
+  "TT": [
+   [
+    "BWA",
+    "Caribbean Airlines"
+   ]
+  ],
+  "BR": [
+   [
+    "AZU",
+    "Azul"
+   ],
+   [
+    "TAM",
+    "LATAM Brasil"
+   ],
+   [
+    "GLO",
+    "Gol"
+   ]
+  ],
+  "AR": [
+   [
+    "ARG",
+    "Aerolíneas Argentinas"
+   ],
+   [
+    "FBZ",
+    "Flybondi"
+   ]
+  ],
+  "CL": [
+   [
+    "LAN",
+    "LATAM Airlines"
+   ],
+   [
+    "JAT",
+    "JetSMART"
+   ],
+   [
+    "SKU",
+    "Sky Airline"
+   ]
+  ],
+  "CO": [
+   [
+    "AVA",
+    "Avianca"
+   ],
+   [
+    "ARE",
+    "LATAM Colombia"
+   ],
+   [
+    "RPB",
+    "Wingo"
+   ]
+  ],
+  "PE": [
+   [
+    "LPE",
+    "LATAM Perú"
+   ]
+  ],
+  "EC": [
+   [
+    "LNE",
+    "LATAM Ecuador"
+   ]
+  ],
+  "VE": [
+   [
+    "VCV",
+    "Conviasa"
+   ],
+   [
+    "LER",
+    "Laser Airlines"
+   ]
+  ],
+  "BO": [
+   [
+    "BOV",
+    "Boliviana de Aviación"
+   ]
+  ],
+  "SR": [
+   [
+    "SLM",
+    "Surinam Airways"
+   ]
+  ],
+  "GB": [
+   [
+    "EZY",
+    "easyJet"
+   ],
+   [
+    "BAW",
+    "British Airways"
+   ],
+   [
+    "EXS",
+    "Jet2.com"
+   ]
+  ],
+  "IE": [
+   [
+    "RYR",
+    "Ryanair"
+   ],
+   [
+    "EIN",
+    "Aer Lingus"
+   ]
+  ],
+  "DE": [
+   [
+    "DLH",
+    "Lufthansa"
+   ],
+   [
+    "EWG",
+    "Eurowings"
+   ],
+   [
+    "CFG",
+    "Condor"
+   ]
+  ],
+  "FR": [
+   [
+    "AFR",
+    "Air France"
+   ],
+   [
+    "TVF",
+    "Transavia France"
+   ],
+   [
+    "CRL",
+    "Corsair"
+   ]
+  ],
+  "ES": [
+   [
+    "IBE",
+    "Iberia"
+   ],
+   [
+    "VLG",
+    "Vueling"
+   ],
+   [
+    "AEA",
+    "Air Europa"
+   ]
+  ],
+  "IT": [
+   [
+    "ITY",
+    "ITA Airways"
+   ],
+   [
+    "NOS",
+    "Neos"
+   ]
+  ],
+  "NL": [
+   [
+    "KLM",
+    "KLM"
+   ],
+   [
+    "TRA",
+    "Transavia"
+   ],
+   [
+    "TFL",
+    "TUI fly Netherlands"
+   ]
+  ],
+  "BE": [
+   [
+    "BEL",
+    "Brussels Airlines"
+   ],
+   [
+    "JAF",
+    "TUI fly Belgium"
+   ]
+  ],
+  "CH": [
+   [
+    "SWR",
+    "Swiss"
+   ],
+   [
+    "EDW",
+    "Edelweiss Air"
+   ]
+  ],
+  "AT": [
+   [
+    "AUA",
+    "Austrian Airlines"
+   ],
+   [
+    "EJU",
+    "easyJet Europe"
+   ]
+  ],
+  "PT": [
+   [
+    "TAP",
+    "TAP Air Portugal"
+   ],
+   [
+    "RZO",
+    "Azores Airlines"
+   ]
+  ],
+  "SE": [
+   [
+    "SAS",
+    "SAS"
+   ]
+  ],
+  "NO": [
+   [
+    "NAX",
+    "Norwegian"
+   ],
+   [
+    "SAS",
+    "SAS"
+   ],
+   [
+    "WIF",
+    "Widerøe"
+   ]
+  ],
+  "DK": [
+   [
+    "SAS",
+    "SAS"
+   ]
+  ],
+  "FI": [
+   [
+    "FIN",
+    "Finnair"
+   ]
+  ],
+  "IS": [
+   [
+    "ICE",
+    "Icelandair"
+   ],
+   [
+    "FPY",
+    "Play"
+   ]
+  ],
+  "PL": [
+   [
+    "LOT",
+    "LOT Polish Airlines"
+   ],
+   [
+    "ENT",
+    "Enter Air"
+   ]
+  ],
+  "HU": [
+   [
+    "WZZ",
+    "Wizz Air"
+   ]
+  ],
+  "CZ": [
+   [
+    "TVS",
+    "Smartwings"
+   ],
+   [
+    "CSA",
+    "Czech Airlines"
+   ]
+  ],
+  "RO": [
+   [
+    "ROT",
+    "TAROM"
+   ]
+  ],
+  "GR": [
+   [
+    "AEE",
+    "Aegean Airlines"
+   ],
+   [
+    "OAL",
+    "Olympic Air"
+   ],
+   [
+    "SEH",
+    "Sky Express"
+   ]
+  ],
+  "TR": [
+   [
+    "THY",
+    "Turkish Airlines"
+   ],
+   [
+    "PGT",
+    "Pegasus Airlines"
+   ],
+   [
+    "SXS",
+    "SunExpress"
+   ]
+  ],
+  "RU": [
+   [
+    "AFL",
+    "Aeroflot"
+   ],
+   [
+    "SBI",
+    "S7 Airlines"
+   ],
+   [
+    "PBD",
+    "Pobeda"
+   ]
+  ],
+  "BY": [
+   [
+    "BRU",
+    "Belavia"
+   ]
+  ],
+  "LV": [
+   [
+    "BTI",
+    "airBaltic"
+   ]
+  ],
+  "HR": [
+   [
+    "CTN",
+    "Croatia Airlines"
+   ]
+  ],
+  "RS": [
+   [
+    "ASL",
+    "Air Serbia"
+   ]
+  ],
+  "BG": [
+   [
+    "LZB",
+    "Bulgaria Air"
+   ]
+  ],
+  "MT": [
+   [
+    "KMM",
+    "KM Malta Airlines"
+   ]
+  ],
+  "LU": [
+   [
+    "LGL",
+    "Luxair"
+   ]
+  ],
+  "AZ": [
+   [
+    "AHY",
+    "Azerbaijan Airlines"
+   ]
+  ],
+  "KZ": [
+   [
+    "KZR",
+    "Air Astana"
+   ],
+   [
+    "VSV",
+    "SCAT Airlines"
+   ]
+  ],
+  "UZ": [
+   [
+    "UZB",
+    "Uzbekistan Airways"
+   ]
+  ],
+  "TM": [
+   [
+    "TUA",
+    "Turkmenistan Airlines"
+   ]
+  ],
+  "AE": [
+   [
+    "UAE",
+    "Emirates"
+   ],
+   [
+    "FDB",
+    "flydubai"
+   ],
+   [
+    "ETD",
+    "Etihad Airways"
+   ]
+  ],
+  "QA": [
+   [
+    "QTR",
+    "Qatar Airways"
+   ]
+  ],
+  "SA": [
+   [
+    "SVA",
+    "Saudia"
+   ],
+   [
+    "KNE",
+    "flynas"
+   ],
+   [
+    "FAD",
+    "flyadeal"
+   ]
+  ],
+  "KW": [
+   [
+    "KAC",
+    "Kuwait Airways"
+   ],
+   [
+    "JZR",
+    "Jazeera Airways"
+   ]
+  ],
+  "BH": [
+   [
+    "GFA",
+    "Gulf Air"
+   ]
+  ],
+  "OM": [
+   [
+    "OMA",
+    "Oman Air"
+   ],
+   [
+    "OMS",
+    "SalamAir"
+   ]
+  ],
+  "IL": [
+   [
+    "ELY",
+    "El Al"
+   ],
+   [
+    "ISR",
+    "Israir"
+   ],
+   [
+    "AIZ",
+    "Arkia"
+   ]
+  ],
+  "JO": [
+   [
+    "RJA",
+    "Royal Jordanian"
+   ]
+  ],
+  "LB": [
+   [
+    "MEA",
+    "Middle East Airlines"
+   ]
+  ],
+  "IR": [
+   [
+    "IRM",
+    "Mahan Air"
+   ],
+   [
+    "IRA",
+    "Iran Air"
+   ]
+  ],
+  "IQ": [
+   [
+    "IAW",
+    "Iraqi Airways"
+   ]
+  ],
+  "SY": [
+   [
+    "SYR",
+    "Syrian Air"
+   ]
+  ],
+  "YE": [
+   [
+    "IYE",
+    "Yemenia"
+   ]
+  ],
+  "CN": [
+   [
+    "CSN",
+    "China Southern Airlines"
+   ],
+   [
+    "CES",
+    "China Eastern Airlines"
+   ],
+   [
+    "CCA",
+    "Air China"
+   ]
+  ],
+  "HK": [
+   [
+    "CPA",
+    "Cathay Pacific"
+   ],
+   [
+    "HKE",
+    "HK Express"
+   ],
+   [
+    "CRK",
+    "Hong Kong Airlines"
+   ]
+  ],
+  "MO": [
+   [
+    "AMU",
+    "Air Macau"
+   ]
+  ],
+  "TW": [
+   [
+    "EVA",
+    "EVA Air"
+   ],
+   [
+    "CAL",
+    "China Airlines"
+   ],
+   [
+    "SJX",
+    "Starlux Airlines"
+   ]
+  ],
+  "JP": [
+   [
+    "ANA",
+    "All Nippon Airways"
+   ],
+   [
+    "JAL",
+    "Japan Airlines"
+   ],
+   [
+    "APJ",
+    "Peach"
+   ]
+  ],
+  "KR": [
+   [
+    "KAL",
+    "Korean Air"
+   ],
+   [
+    "AAR",
+    "Asiana Airlines"
+   ],
+   [
+    "JNA",
+    "Jeju Air"
+   ]
+  ],
+  "KP": [
+   [
+    "KOR",
+    "Air Koryo"
+   ]
+  ],
+  "MN": [
+   [
+    "MGL",
+    "MIAT Mongolian Airlines"
+   ]
+  ],
+  "IN": [
+   [
+    "IGO",
+    "IndiGo"
+   ],
+   [
+    "AIC",
+    "Air India"
+   ],
+   [
+    "AKJ",
+    "Akasa Air"
+   ]
+  ],
+  "PK": [
+   [
+    "PIA",
+    "Pakistan International Airlines"
+   ],
+   [
+    "ABQ",
+    "Airblue"
+   ]
+  ],
+  "BD": [
+   [
+    "BBC",
+    "Biman Bangladesh Airlines"
+   ],
+   [
+    "UBG",
+    "US-Bangla Airlines"
+   ]
+  ],
+  "LK": [
+   [
+    "ALK",
+    "SriLankan Airlines"
+   ]
+  ],
+  "NP": [
+   [
+    "BHA",
+    "Buddha Air"
+   ],
+   [
+    "RNA",
+    "Nepal Airlines"
+   ]
+  ],
+  "AF": [
+   [
+    "AFG",
+    "Ariana Afghan Airlines"
+   ]
+  ],
+  "TH": [
+   [
+    "AIQ",
+    "Thai AirAsia"
+   ],
+   [
+    "THA",
+    "Thai Airways"
+   ],
+   [
+    "TLM",
+    "Thai Lion Air"
+   ]
+  ],
+  "VN": [
+   [
+    "VJC",
+    "VietJet Air"
+   ],
+   [
+    "HVN",
+    "Vietnam Airlines"
+   ],
+   [
+    "BAV",
+    "Bamboo Airways"
+   ]
+  ],
+  "MY": [
+   [
+    "MAS",
+    "Malaysia Airlines"
+   ],
+   [
+    "AXM",
+    "AirAsia"
+   ],
+   [
+    "MXD",
+    "Batik Air Malaysia"
+   ]
+  ],
+  "SG": [
+   [
+    "SIA",
+    "Singapore Airlines"
+   ],
+   [
+    "TGW",
+    "Scoot"
+   ]
+  ],
+  "ID": [
+   [
+    "LNI",
+    "Lion Air"
+   ],
+   [
+    "GIA",
+    "Garuda Indonesia"
+   ],
+   [
+    "CTV",
+    "Citilink"
+   ]
+  ],
+  "PH": [
+   [
+    "CEB",
+    "Cebu Pacific"
+   ],
+   [
+    "PAL",
+    "Philippine Airlines"
+   ],
+   [
+    "APG",
+    "AirAsia Philippines"
+   ]
+  ],
+  "LA": [
+   [
+    "LAO",
+    "Lao Airlines"
+   ]
+  ],
+  "BN": [
+   [
+    "RBA",
+    "Royal Brunei Airlines"
+   ]
+  ],
+  "AU": [
+   [
+    "QFA",
+    "Qantas"
+   ],
+   [
+    "VOZ",
+    "Virgin Australia"
+   ],
+   [
+    "JST",
+    "Jetstar"
+   ]
+  ],
+  "NZ": [
+   [
+    "ANZ",
+    "Air New Zealand"
+   ]
+  ],
+  "FJ": [
+   [
+    "FJI",
+    "Fiji Airways"
+   ]
+  ],
+  "PG": [
+   [
+    "ANG",
+    "Air Niugini"
+   ]
+  ],
+  "ZA": [
+   [
+    "SFR",
+    "FlySafair"
+   ],
+   [
+    "LNK",
+    "Airlink"
+   ],
+   [
+    "SAA",
+    "South African Airways"
+   ]
+  ],
+  "NG": [
+   [
+    "APK",
+    "Air Peace"
+   ],
+   [
+    "OLA",
+    "Overland Airways"
+   ]
+  ],
+  "ET": [
+   [
+    "ETH",
+    "Ethiopian Airlines"
+   ]
+  ],
+  "KE": [
+   [
+    "KQA",
+    "Kenya Airways"
+   ],
+   [
+    "JMA",
+    "Jambojet"
+   ]
+  ],
+  "TZ": [
+   [
+    "ATC",
+    "Air Tanzania"
+   ]
+  ],
+  "RW": [
+   [
+    "RWD",
+    "RwandAir"
+   ]
+  ],
+  "UG": [
+   [
+    "UGD",
+    "Uganda Airlines"
+   ]
+  ],
+  "EG": [
+   [
+    "MSR",
+    "EgyptAir"
+   ],
+   [
+    "MSC",
+    "Air Cairo"
+   ]
+  ],
+  "MA": [
+   [
+    "RAM",
+    "Royal Air Maroc"
+   ]
+  ],
+  "DZ": [
+   [
+    "DAH",
+    "Air Algérie"
+   ]
+  ],
+  "TN": [
+   [
+    "TAR",
+    "Tunisair"
+   ]
+  ],
+  "LY": [
+   [
+    "LAA",
+    "Libyan Airlines"
+   ]
+  ],
+  "SN": [
+   [
+    "SZN",
+    "Air Sénégal"
+   ]
+  ],
+  "CI": [
+   [
+    "VRE",
+    "Air Côte d'Ivoire"
+   ]
+  ],
+  "AO": [
+   [
+    "DTA",
+    "TAAG Angola Airlines"
+   ]
+  ],
+  "MZ": [
+   [
+    "LAM",
+    "LAM Mozambique Airlines"
+   ]
+  ],
+  "ZW": [
+   [
+    "AZW",
+    "Air Zimbabwe"
+   ]
+  ],
+  "MU": [
+   [
+    "MAU",
+    "Air Mauritius"
+   ]
+  ],
+  "MG": [
+   [
+    "MDG",
+    "Madagascar Airlines"
+   ]
+  ],
+  "SC": [
+   [
+    "SEY",
+    "Air Seychelles"
+   ]
+  ],
+  "BW": [
+   [
+    "BOT",
+    "Air Botswana"
+   ]
+  ],
+  "TG": [
+   [
+    "SKK",
+    "ASKY Airlines"
+   ]
+  ],
+  "SD": [
+   [
+    "SUD",
+    "Sudan Airways"
+   ]
+  ]
+ }
+}

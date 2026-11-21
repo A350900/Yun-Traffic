@@ -78,6 +78,7 @@ export default function App() {
         }}
         firBoundaries={layers.firBoundaries}
         airports={layers.airports}
+        countryAirlines={layers.countryAirlines}
         tracking={tracking}
         onFeed={onFeed}
         dayNight={layers.dayNight} radar={radar} selection={selection} sim={sim} simEnabled={simOn} simShowAreas={settings.simShowAreas} />

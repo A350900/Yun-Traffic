@@ -9,8 +9,16 @@ import { OpenSkyPoller } from './opensky.ts'
 import { AIRPLANES_LIVE, RegionSweep } from './regionSweep.ts'
 import { flightInfo, flightPhoto, flightTrace, onTraceRequest } from './flightInfo.ts'
 import type { FlightTrace } from '../shared/wire.ts'
-import { airportPhoto } from './airportPhoto.ts'
+import { airportPhoto, AIRPORT_NAMES } from './airportPhoto.ts'
+import { ensureMedia, mediaFile, mediaIndex, type MediaKind } from './media.ts'
 import { SimRecorder } from './sim/recorder.ts' // simulated traffic
+
+/** Airlines shown in Encyclopedia mode (ICAO -> name), for their logos. */
+const AIRLINE_NAMES: Record<string, string> = Object.fromEntries(
+  Object.values(JSON.parse(readFileSync(join(import.meta.dirname, '..', 'data', 'encyclopedia', 'country-airlines.json'), 'utf8')).countries as [string, string][][])
+    .flat()
+    .map(([code, name]) => [code, name]),
+)
 import type { AircraftResponse } from '../shared/wire.ts'
 
 // Honour HTTPS_PROXY when one is set (e.g. in sandboxed/corporate networks).
@@ -180,6 +188,23 @@ createServer((req, res) => {
     )
     return
   }
+  // Downloaded images (airline logos, airport photos), served from this computer.
+  if (req.method === 'GET' && url.pathname === '/api/media/airline-logos') {
+    ensureMedia('airline-logos', AIRLINE_NAMES) // fills in any missing ones in the background
+    const idx = mediaIndex('airline-logos')
+    const out: Record<string, { src: string; author?: string; license?: string | null; link?: string }> = {}
+    for (const code of Object.keys(AIRLINE_NAMES)) if (mediaFile('airline-logos', code)) out[code] = { src: `/api/media/airline-logos/${code}`, author: idx[code].author, license: idx[code].license, link: idx[code].link }
+    return send(req, res, 200, out)
+  }
+  const media = url.pathname.match(/^\/api\/media\/(airline-logos|airport-photos)\/([A-Z0-9]{3,4})$/i)
+  if (req.method === 'GET' && media) {
+    const file = mediaFile(media[1] as MediaKind, media[2].toUpperCase())
+    if (!file) return send(req, res, 404, { error: 'not downloaded' })
+    const ext = file.split('.').pop()
+    res.writeHead(200, { 'Content-Type': ext === 'png' ? 'image/png' : ext === 'svg' ? 'image/svg+xml' : ext === 'webp' ? 'image/webp' : 'image/jpeg', 'Cache-Control': 'public, max-age=604800' })
+    res.end(readFileSync(file))
+    return
+  }
   const ap = url.pathname.match(/^\/api\/airport-photo\/([A-Z0-9]{4})$/i)
   if (req.method === 'GET' && ap) {
     airportPhoto(ap[1].toUpperCase()).then((photo) => send(req, res, 200, photo))
@@ -193,3 +218,11 @@ createServer((req, res) => {
 }).listen(PORT, () => {
   console.log(`[server] listening on http://localhost:${PORT}`)
 })
+
+// Download any missing airline logos and airport photos in the background, a
+// minute after starting (slowly; Wikimedia asks for few requests), so the app
+// has them offline. Already-downloaded ones are skipped.
+if (process.env.MEDIA_DOWNLOAD !== '0')
+  setTimeout(() => {
+    void ensureMedia('airline-logos', AIRLINE_NAMES).then(() => ensureMedia('airport-photos', AIRPORT_NAMES))
+  }, 60_000)

@@ -24,6 +24,11 @@ const OPTIONS: { key: ToggleKey; label: string; hint: string }[] = [
     hint: "Pins for the world's 100 busiest airports. Click one for details.",
   },
   {
+    key: 'countryAirlines',
+    label: 'Airlines by country',
+    hint: "Each country's main airlines (up to 3). Logos from Wikimedia Commons.",
+  },
+  {
     key: 'firBoundaries',
     label: 'Control boundaries',
     hint: 'En-route control areas (FIRs) worldwide; dashed over oceans. Approximate (VATSpy data, CC BY-SA).',

@@ -12,7 +12,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test:sim": "tsx --test src/sim/*.test.ts",
-    "sim:calibrate": "tsx scripts/sim/calibrate.ts --write"
+    "sim:calibrate": "tsx scripts/sim/calibrate.ts --write",
+    "media:download": "tsx scripts/download-media.ts"
   },
   "dependencies": {
     "maplibre-gl": "^6.18.0",
