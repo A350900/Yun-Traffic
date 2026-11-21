@@ -27,3 +27,6 @@ dist
 logs
 .env
 .cache
+
+# Your own logos/photos (see server/media.ts); not uploaded
+custom-media/

@@ -193,7 +193,7 @@ createServer((req, res) => {
     ensureMedia('airline-logos', AIRLINE_NAMES) // fills in any missing ones in the background
     const idx = mediaIndex('airline-logos')
     const out: Record<string, { src: string; author?: string; license?: string | null; link?: string }> = {}
-    for (const code of Object.keys(AIRLINE_NAMES)) if (mediaFile('airline-logos', code)) out[code] = { src: `/api/media/airline-logos/${code}`, author: idx[code].author, license: idx[code].license, link: idx[code].link }
+    for (const code of Object.keys(AIRLINE_NAMES)) if (mediaFile('airline-logos', code)) out[code] = { src: `/api/media/airline-logos/${code}`, author: idx[code]?.author, license: idx[code]?.license, link: idx[code]?.link }
     return send(req, res, 200, out)
   }
   const media = url.pathname.match(/^\/api\/media\/(airline-logos|airport-photos)\/([A-Z0-9]{3,4})$/i)
@@ -201,7 +201,8 @@ createServer((req, res) => {
     const file = mediaFile(media[1] as MediaKind, media[2].toUpperCase())
     if (!file) return send(req, res, 404, { error: 'not downloaded' })
     const ext = file.split('.').pop()
-    res.writeHead(200, { 'Content-Type': ext === 'png' ? 'image/png' : ext === 'svg' ? 'image/svg+xml' : ext === 'webp' ? 'image/webp' : 'image/jpeg', 'Cache-Control': 'public, max-age=604800' })
+    // short cache: a logo you add to custom-media shows up on the next visit
+    res.writeHead(200, { 'Content-Type': ext === 'png' ? 'image/png' : ext === 'svg' ? 'image/svg+xml' : ext === 'webp' ? 'image/webp' : 'image/jpeg', 'Cache-Control': 'public, max-age=300' })
     res.end(readFileSync(file))
     return
   }

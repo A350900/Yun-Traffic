@@ -23,5 +23,9 @@ const count = (kind: 'airline-logos' | 'airport-photos', codes: string[]) => cod
 console.log(`airline logos: ${count('airline-logos', Object.keys(airlines))} of ${Object.keys(airlines).length}`)
 console.log(`airport photos: ${count('airport-photos', Object.keys(airports))} of ${Object.keys(airports).length}`)
 const missing = Object.keys(airlines).filter((c) => !mediaFile('airline-logos', c))
-if (missing.length) console.log('no logo on Wikimedia (shown as text):', missing.map((c) => `${c} ${airlines[c]}`).join(', '))
-void mediaIndex
+if (missing.length) {
+  console.log(`\nNo logo yet (shown as the airline's name) — ${missing.length}:`)
+  const idx = mediaIndex('airline-logos')
+  for (const c of missing) console.log(`  ${c}  ${airlines[c]}: ${idx[c]?.reason ?? 'not looked up yet (try again later)'}`)
+  console.log(`\nTo use your own logo, save it as custom-media/airline-logos/<CODE>.png (or .svg/.jpg/.webp), e.g. custom-media/airline-logos/CES.png`)
+}

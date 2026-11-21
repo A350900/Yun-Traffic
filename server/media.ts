@@ -14,10 +14,17 @@ import { join } from 'node:path'
  * (~25 codes a request), downloads go one at a time, and a "too many requests"
  * answer pauses everything for a while. Files: .cache/media/<kind>/<ICAO>.<ext>,
  * index: .cache/media/<kind>.json.
+ *
+ * Your own images win: put a file named by the ICAO code in
+ * custom-media/<kind>/ (e.g. custom-media/airline-logos/CES.png) and it's used
+ * instead. Useful where Commons has no free version (detailed logos are often
+ * copyrighted, so they aren't on Commons). That folder isn't uploaded to GitHub.
  */
 
 const UA = { 'User-Agent': 'yun-traffic/0.1 (+https://github.com/A350900/Yun-Traffic)' }
 const ROOT = join(import.meta.dirname, '..', '.cache', 'media')
+const CUSTOM = join(import.meta.dirname, '..', 'custom-media')
+const EXTS = ['png', 'svg', 'jpg', 'jpeg', 'webp']
 const DAY = 86_400_000
 
 export type MediaKind = 'airline-logos' | 'airport-photos'
@@ -37,6 +44,8 @@ export interface MediaEntry {
   link?: string
   /** when this was looked up */
   at: number
+  /** why there's no image */
+  reason?: string
 }
 
 class RateLimited extends Error {}
@@ -100,12 +109,13 @@ const fileKey = (f: string) => {
 }
 
 type Found = { file: string; label: string }
+type Miss = { reason: string }
 
 /** ICAO codes -> Wikidata image file names (batched). `names` are ours, to pick the right item. */
-async function findImages(kind: MediaKind, codes: string[], names: Record<string, string>): Promise<Record<string, Found | null>> {
+async function findImages(kind: MediaKind, codes: string[], names: Record<string, string>): Promise<Record<string, Found | Miss>> {
   const { codeProp, imageProp } = SPEC[kind]
   const wd = 'https://www.wikidata.org/w/api.php?format=json&'
-  const out: Record<string, Found | null> = Object.fromEntries(codes.map((c) => [c, null]))
+  const out: Record<string, Found | Miss> = Object.fromEntries(codes.map((c) => [c, { reason: 'not found on Wikidata by its ICAO code' }]))
   const best: Record<string, number> = {}
   for (let i = 0; i < codes.length; i += 25) {
     const batch = codes.slice(i, i + 25)
@@ -121,10 +131,19 @@ async function findImages(kind: MediaKind, codes: string[], names: Record<string
         const file: string | undefined = e?.claims?.[imageProp]?.[0]?.mainsnak?.datavalue?.value
         for (const c of e?.claims?.[codeProp] ?? []) {
           const code = String(c?.mainsnak?.datavalue?.value ?? '').toUpperCase()
-          if (!(code in out) || !file) continue
+          if (!(code in out)) continue
           // Codes get reused (defunct airlines): take the item whose name matches ours best.
           const score = kind === 'airline-logos' ? nameMatch(names[code] ?? '', label) : 1
-          if (score > 0 && score > (best[code] ?? 0)) {
+          const cur = out[code]
+          if (!file) {
+            if ('reason' in cur && score > 0) out[code] = { reason: `no free ${kind === 'airline-logos' ? 'logo' : 'photo'} on Wikimedia Commons (Wikidata: ${label})` }
+            continue
+          }
+          if (score === 0) {
+            if ('reason' in cur && cur.reason.startsWith('not found')) out[code] = { reason: `name didn't match (Wikidata has "${label}" for this code)` }
+            continue
+          }
+          if (score > (best[code] ?? 0)) {
             best[code] = score
             out[code] = { file, label }
           }
@@ -183,8 +202,19 @@ function saveIndex(kind: MediaKind) {
   writeFileSync(indexFile(kind), JSON.stringify(mediaIndex(kind)))
 }
 
-/** Path of a downloaded image, if we have it. */
+/** Your own image for this code (custom-media/<kind>/<CODE>.<ext>), if any. */
+export function customFile(kind: MediaKind, code: string): string | null {
+  for (const ext of EXTS) {
+    const f = join(CUSTOM, kind, `${code}.${ext}`)
+    if (existsSync(f)) return f
+  }
+  return null
+}
+
+/** Path of the image to use: your own, else the downloaded one. */
 export function mediaFile(kind: MediaKind, code: string): string | null {
+  const custom = customFile(kind, code)
+  if (custom) return custom
   const e = mediaIndex(kind)[code]
   return e?.file && existsSync(join(dir(kind), e.file)) ? join(dir(kind), e.file) : null
 }
@@ -205,7 +235,7 @@ const queued = new Map<MediaKind, Record<string, string>>()
  */
 export function ensureMedia(kind: MediaKind, wanted: Record<string, string>): Promise<void> {
   const q = queued.get(kind) ?? {}
-  for (const [code, name] of Object.entries(wanted)) if (!fresh(mediaIndex(kind)[code], kind, code)) q[code] = name
+  for (const [code, name] of Object.entries(wanted)) if (!customFile(kind, code) && !fresh(mediaIndex(kind)[code], kind, code)) q[code] = name
   queued.set(kind, q)
   running ??= (async () => {
     try {
@@ -226,16 +256,16 @@ async function download(kind: MediaKind, items: Record<string, string>) {
   const codes = Object.keys(items)
   console.log(`[media] looking up ${codes.length} ${kind} on Wikimedia`)
   const found = await findImages(kind, codes, items)
-  const files = [...new Set(Object.values(found).filter((f): f is Found => !!f).map((f) => f.file))]
+  const files = [...new Set(Object.values(found).filter((f): f is Found => 'file' in f).map((f) => f.file))]
   const info = await commonsInfo(files, SPEC[kind].width)
   mkdirSync(dir(kind), { recursive: true })
   const idx = mediaIndex(kind)
   let got = 0
   for (const code of codes) {
     const f = found[code]
-    const i = f ? info[fileKey(f.file)] : undefined
-    if (!f || !i) {
-      idx[code] = { at: Date.now() }
+    const i = 'file' in f ? info[fileKey(f.file)] : undefined
+    if (!('file' in f) || !i) {
+      idx[code] = { at: Date.now(), reason: 'reason' in f ? f.reason : 'file not found on Wikimedia Commons' }
       continue
     }
     const res = await get(i.url)
