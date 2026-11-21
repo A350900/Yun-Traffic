@@ -1,4 +1,4 @@
-import type { ExpressionSpecification, Map as MLMap } from 'maplibre-gl'
+import { Popup, type ExpressionSpecification, type Map as MLMap } from 'maplibre-gl'
 import { AIRPORT_LAYER } from './airports'
 
 /**
@@ -200,4 +200,87 @@ export function setCountryAirlinesVisible(map: MLMap, visible: boolean) {
     return
   }
   if (map.getLayer(COUNTRY_AIRLINES_LAYER)) map.setLayoutProperty(COUNTRY_AIRLINES_LAYER, 'visibility', visible ? 'visible' : 'none')
+  if (!visible) collapseStack()
+}
+
+// ---------------------------------------------------------------- expanded stack (click)
+
+let popup: Popup | null = null
+
+const countryName = (iso: string, fallback: string) => {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' }).of(iso) ?? fallback
+  } catch {
+    return fallback
+  }
+}
+
+/** Grow a country's stack into a card listing its airlines (click a stack). */
+export function expandStack(map: MLMap, iso: string) {
+  const c = countries.find((x) => x.iso === iso)
+  if (!c) return
+  popup?.remove()
+  const el = document.createElement('div')
+  el.className = 'stack-card'
+  const head = document.createElement('header')
+  const title = document.createElement('h3')
+  title.textContent = countryName(c.iso, c.name)
+  const sub = document.createElement('span')
+  sub.textContent = c.airlines.length === 1 ? 'Main airline' : `Top ${c.airlines.length} airlines`
+  const close = document.createElement('button')
+  close.className = 'stack-close'
+  close.setAttribute('aria-label', 'Close')
+  close.textContent = '×'
+  close.onclick = () => popup?.remove()
+  const titles = document.createElement('div')
+  titles.append(title, sub)
+  head.append(titles, close)
+  const list = document.createElement('ol')
+  c.airlines.forEach(([code, name], i) => {
+    const li = document.createElement('li')
+    const rank = document.createElement('span')
+    rank.className = 'stack-rank'
+    rank.textContent = String(i + 1)
+    const tile = document.createElement('span')
+    tile.className = 'stack-tile'
+    const img = images.get(code)
+    if (img) {
+      const im = document.createElement('img')
+      im.src = img.src
+      im.alt = `${name} logo`
+      tile.append(im)
+    } else {
+      tile.classList.add('text')
+      tile.textContent = name
+    }
+    const info = document.createElement('span')
+    info.className = 'stack-info'
+    const n = document.createElement('strong')
+    n.textContent = name
+    const meta = document.createElement('small')
+    meta.textContent = code
+    info.append(n, meta)
+    li.append(rank, tile, info)
+    list.append(li)
+  })
+  const credit = document.createElement('footer')
+  credit.textContent = c.airlines.some(([code]) => images.has(code)) ? 'Logos: Wikimedia Commons (trademarks of their owners)' : 'Logos not downloaded yet'
+  el.append(head, list, credit)
+
+  popup = new Popup({ anchor: 'center', closeButton: false, closeOnClick: true, maxWidth: 'none', className: 'stack-popup' })
+    .setLngLat([c.lon, c.lat])
+    .setDOMContent(el)
+    .addTo(map)
+  const p = popup
+  const onKey = (e: KeyboardEvent) => e.key === 'Escape' && p.remove()
+  window.addEventListener('keydown', onKey)
+  p.on('close', () => {
+    window.removeEventListener('keydown', onKey)
+    if (popup === p) popup = null
+  })
+}
+
+/** Close an expanded stack (e.g. when the layer is hidden). */
+export function collapseStack() {
+  popup?.remove()
 }
