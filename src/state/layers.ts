@@ -15,10 +15,15 @@ export interface LayerSettings {
 
 const DEFAULTS: LayerSettings = { dayNight: true, radar: false, radarStyle: 'cartoon', radarOpacity: 0.85, firBoundaries: false, airports: true }
 const KEY = 'yun.layers'
+/** Bump to reset layers whose default changed (2: control boundaries back to off). */
+const VERSION = 2
 
 function load(): LayerSettings {
   try {
-    return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }
+    const stored = JSON.parse(localStorage.getItem(KEY) ?? '{}')
+    if ((stored.v ?? 1) < 2) delete stored.firBoundaries
+    delete stored.v
+    return { ...DEFAULTS, ...stored }
   } catch {
     return DEFAULTS
   }
@@ -29,7 +34,7 @@ export function useLayerSettings() {
   const [layers, setLayers] = useState<LayerSettings>(load)
   useEffect(() => {
     try {
-      localStorage.setItem(KEY, JSON.stringify(layers))
+      localStorage.setItem(KEY, JSON.stringify({ ...layers, v: VERSION }))
     } catch {
       /* storage unavailable (private mode etc.) — settings just won't persist */
     }
