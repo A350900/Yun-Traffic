@@ -15,7 +15,7 @@ interface ThemeConfig {
 export const THEMES: Record<ThemeName, ThemeConfig> = {
   dark: {
     mapStyle: 'https://tiles.openfreemap.org/styles/dark',
-    logo: '/brand/logo-light.png',
+    logo: '/brand/logo-light-v2.png',
     background: '#0e0e10',
   },
   light: {
