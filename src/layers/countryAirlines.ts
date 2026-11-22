@@ -14,10 +14,20 @@ import { AIRPORT_LAYER } from './airports'
 
 const SOURCE = 'country-airlines'
 export const COUNTRY_AIRLINES_LAYER = 'country-airlines'
-/** priority countries (small countries with big airlines) get their own layer on top: a higher layer is
- *  placed first across all tiles, so they always win over neighbours (sort keys only work within a tile) */
+/**
+ * Who wins an overlap is decided by layers, not just sort keys: a higher layer is
+ * placed first across all map tiles, while a sort key only orders symbols within
+ * one tile (so a quiet country in another tile could take a busy one's space).
+ * Top to bottom: priority countries, then busy (1000+ routes), medium (250+), quiet.
+ */
 const PRIORITY_LAYER = 'country-airlines-priority'
-export const COUNTRY_AIRLINES_LAYERS = [COUNTRY_AIRLINES_LAYER, PRIORITY_LAYER]
+const TIERS: { id: string; minRoutes: number }[] = [
+  { id: 'country-airlines-busy', minRoutes: 1000 },
+  { id: 'country-airlines-medium', minRoutes: 250 },
+  { id: COUNTRY_AIRLINES_LAYER, minRoutes: 0 },
+]
+export const COUNTRY_AIRLINES_LAYERS = [...TIERS.map((t) => t.id), PRIORITY_LAYER]
+const tierOf = (routes: number) => TIERS.findIndex((t) => routes >= t.minRoutes)
 // Drawn at about the size it's shown at the default zoom (scaled only ~0.85-1.25x
 // with zoom), at extra resolution for the screen, so text stays crisp.
 const PX = Math.min(4, Math.ceil((window.devicePixelRatio || 1) * 1.5))
@@ -225,21 +235,24 @@ async function add(map: MLMap) {
         features: countries.map((c) => ({
           type: 'Feature',
           // overlaps: priority countries first (own layer), then the country with more air traffic
-          properties: { iso: c.iso, name: c.name, k: sizeFor(c.areaKm2), rank: -(c.routes ?? 0), priority: Boolean(c.priority), anchor: c.anchor ?? 'center', compact: inEurope(c) },
+          properties: { iso: c.iso, name: c.name, k: sizeFor(c.areaKm2), rank: -(c.routes ?? 0), tier: c.priority ? -1 : tierOf(c.routes ?? 0), anchor: c.anchor ?? 'center', compact: inEurope(c) },
           geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
         })),
       },
       attribution: 'Airline logos: <a href="https://commons.wikimedia.org" target="_blank" rel="noreferrer">Wikimedia Commons</a> (logos are trademarks of their owners)',
     })
   const below = map.getLayer(AIRPORT_LAYER) ? AIRPORT_LAYER : undefined // under the airport pins
-  for (const [id, priority] of [[COUNTRY_AIRLINES_LAYER, false], [PRIORITY_LAYER, true]] as const)
+  // added bottom to top: quiet, medium, busy, then priority
+  const layers = [...TIERS.map((t, i) => [t.id, i] as const).reverse(), [PRIORITY_LAYER, -1] as const]
+  for (const [id, tier] of layers) {
+    const priority = tier === -1
     if (!map.getLayer(id))
       map.addLayer(
         {
           id,
           type: 'symbol',
           source: SOURCE,
-          filter: priority ? ['get', 'priority'] : ['!', ['get', 'priority']],
+          filter: ['==', ['get', 'tier'], tier],
           minzoom: 1.7, // same as the airport pins
           layout: {
             // Europe zoomed out: #1 airline only; elsewhere, and from FULL_FROM_ZOOM: all (up to 3)
@@ -255,8 +268,9 @@ async function add(map: MLMap) {
           },
           paint: { 'icon-opacity': ['interpolate', ['linear'], ['zoom'], 1.7, 0, 2, 1] as unknown as ExpressionSpecification },
         },
-        below, // the priority layer is added second, so it sits above the normal one
+        below, // each layer added goes above the previous ones
       )
+  }
   // Logos still downloading on the server: look again every 2 minutes and swap them in.
   clearInterval(refreshTimer)
   refreshTimer = window.setInterval(async () => {
