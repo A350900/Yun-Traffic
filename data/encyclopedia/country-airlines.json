@@ -11,7 +11,8 @@
    "DE",
    "IT",
    "GB",
-   "FR"
+   "FR",
+   "KR"
   ],
   "closer": [
    "CH",
@@ -29,7 +30,8 @@
   "GB": "bottom",
   "CH": "left",
   "FR": "right",
-  "ES": "top"
+  "ES": "top",
+  "JP": "left"
  },
  "countries": {
   "US": [
