@@ -14,6 +14,7 @@ import type { SelectionStore } from '../flights/selection'
 import { addPathLayers, clearPath, updatePath } from '../flights/pathLayer'
 import { addAirportLayer, AIRPORT_LAYER, setAirportsVisible } from '../layers/airports'
 import { setFirVisible } from '../layers/fir'
+import { setOceanicVisible } from '../layers/oceanic'
 import { COUNTRY_AIRLINES_LAYER, expandStack, setCountryAirlinesVisible } from '../layers/countryAirlines'
 import { extrapolate } from '../flights/position'
 import { F } from '../../shared/wire'
@@ -72,6 +73,8 @@ interface Props {
   airports: boolean
   /** Encyclopedia: each country's main airlines */
   countryAirlines: boolean
+  /** oceanic airways and the North Atlantic Tracks */
+  oceanicRoutes: boolean
   /** Tracking mode: live/simulated traffic shown and updated. Off = Encyclopedia mode (no traffic). */
   tracking: boolean
   onFeed: (state: FeedState) => void
@@ -100,7 +103,7 @@ function focusFor(map: MLMap): FocusHint | null {
   return { lat: c.lat, lon: c.lng, radiusNm: Math.max(radiusNm, 25) }
 }
 
-function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, countryAirlines, tracking, onFeed, dayNight, radar, selection, sim, simEnabled, simShowAreas }: Props) {
+function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, countryAirlines, oceanicRoutes, tracking, onFeed, dayNight, radar, selection, sim, simEnabled, simShowAreas }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
   const onSelectRef = useRef(onSelect)
@@ -110,6 +113,8 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, country
   trackingRef.current = tracking
   /** live feed controls + "redraw everything" for the mode effect below */
   const trafficRef = useRef<{ setPaused: (p: boolean) => void; redrawAll: () => void } | null>(null)
+  const oceanicRef = useRef(oceanicRoutes)
+  oceanicRef.current = oceanicRoutes
   const countryAirlinesRef = useRef(countryAirlines)
   countryAirlinesRef.current = countryAirlines
   const airportsRef = useRef(airports)
@@ -293,6 +298,7 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, country
       setAirportsVisible(map, airportsRef.current)
       setTrafficVisible(map, trackingRef.current)
       if (countryAirlinesRef.current) setCountryAirlinesVisible(map, true)
+      if (oceanicRef.current) setOceanicVisible(map, true)
       if (firRef.current) setFirVisible(map, true, ICON_LAYERS[0]) // control boundaries, under everything of ours
       drawAllProgressively()
       renderTimer = window.setInterval(tick, TICK_MS)
@@ -348,6 +354,11 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, country
     const map = mapRef.current
     if (map?.getSource('aircraft-0')) setCountryAirlinesVisible(map, countryAirlines)
   }, [countryAirlines])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (map?.getSource('aircraft-0')) setOceanicVisible(map, oceanicRoutes)
+  }, [oceanicRoutes])
 
   // Tracking / Encyclopedia: show or hide all traffic, and pause the live feed
   // (nothing is fetched or drawn for traffic in Encyclopedia mode).

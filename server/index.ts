@@ -10,6 +10,7 @@ import { AIRPLANES_LIVE, RegionSweep } from './regionSweep.ts'
 import { flightInfo, flightPhoto, flightTrace, onTraceRequest } from './flightInfo.ts'
 import type { FlightTrace } from '../shared/wire.ts'
 import { airportPhoto, AIRPORT_NAMES } from './airportPhoto.ts'
+import { natTracks } from './natTracks.ts'
 import { ensureMedia, mediaFile, type MediaKind } from './media.ts'
 import { SimRecorder } from './sim/recorder.ts' // simulated traffic
 
@@ -186,6 +187,11 @@ createServer((req, res) => {
       (body) => send(req, res, 200, body),
       (err) => send(req, res, 502, { error: (err as Error).message }),
     )
+    return
+  }
+  // North Atlantic Tracks of the day (last good copy when offline)
+  if (req.method === 'GET' && url.pathname === '/api/tracks/nat') {
+    natTracks().then((t) => send(req, res, 200, t))
     return
   }
   // Downloaded images (airline logos, airport photos), served from this computer.

@@ -11,6 +11,8 @@ export interface LayerSettings {
   airports: boolean
   /** Encyclopedia: each country's main airlines */
   countryAirlines: boolean
+  /** oceanic airways and the North Atlantic Tracks of the day */
+  oceanicRoutes: boolean
   /** en-route control boundaries (FIRs) */
   firBoundaries: boolean
 }
@@ -19,8 +21,8 @@ import type { AppMode } from './settings'
 
 /** Each mode keeps its own layer choices. Encyclopedia: everything on except weather. */
 const DEFAULTS: Record<AppMode, LayerSettings> = {
-  tracking: { dayNight: true, radar: false, radarStyle: 'cartoon', radarOpacity: 0.85, firBoundaries: false, airports: true, countryAirlines: false },
-  encyclopedia: { dayNight: true, radar: false, radarStyle: 'cartoon', radarOpacity: 0.85, firBoundaries: true, airports: true, countryAirlines: true },
+  tracking: { dayNight: true, radar: false, radarStyle: 'cartoon', radarOpacity: 0.85, firBoundaries: false, airports: true, countryAirlines: false, oceanicRoutes: false },
+  encyclopedia: { dayNight: true, radar: false, radarStyle: 'cartoon', radarOpacity: 0.85, firBoundaries: true, airports: true, countryAirlines: true, oceanicRoutes: true },
 }
 const KEYS: Record<AppMode, string> = { tracking: 'yun.layers', encyclopedia: 'yun.layers.encyclopedia' }
 /** Bump to reset layers whose default changed (2: control boundaries back to off in Tracking). */

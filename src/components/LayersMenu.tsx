@@ -29,6 +29,11 @@ const OPTIONS: { key: ToggleKey; label: string; hint: string }[] = [
     hint: "Each country's main airlines (up to 3). Logos from Wikimedia Commons.",
   },
   {
+    key: 'oceanicRoutes',
+    label: 'Oceanic tracks & airways',
+    hint: "Today's North Atlantic Tracks (lettered) and the fixed oceanic airways over the Pacific, western Atlantic, Gulf and Caribbean.",
+  },
+  {
     key: 'firBoundaries',
     label: 'Control boundaries',
     hint: 'En-route control areas (FIRs) worldwide; dashed over oceans. Approximate (VATSpy data, CC BY-SA).',
