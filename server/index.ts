@@ -10,7 +10,7 @@ import { AIRPLANES_LIVE, RegionSweep } from './regionSweep.ts'
 import { flightInfo, flightPhoto, flightTrace, onTraceRequest } from './flightInfo.ts'
 import type { FlightTrace } from '../shared/wire.ts'
 import { airportPhoto, AIRPORT_NAMES } from './airportPhoto.ts'
-import { ensureMedia, mediaFile, mediaIndex, type MediaKind } from './media.ts'
+import { ensureMedia, mediaFile, type MediaKind } from './media.ts'
 import { SimRecorder } from './sim/recorder.ts' // simulated traffic
 
 /** Airlines shown in Encyclopedia mode (ICAO -> name), for their logos. */
@@ -190,13 +190,17 @@ createServer((req, res) => {
   }
   // Downloaded images (airline logos, airport photos), served from this computer.
   if (req.method === 'GET' && url.pathname === '/api/media/airline-logos') {
-    ensureMedia('airline-logos', AIRLINE_NAMES) // fills in any missing ones in the background
-    const idx = mediaIndex('airline-logos')
-    const out: Record<string, { src: string; author?: string; license?: string | null; link?: string }> = {}
-    for (const code of Object.keys(AIRLINE_NAMES)) if (mediaFile('airline-logos', code)) out[code] = { src: `/api/media/airline-logos/${code}`, author: idx[code]?.author, license: idx[code]?.license, link: idx[code]?.link }
+    // fills in any missing ones in the background
+    void ensureMedia('airline-icons', AIRLINE_NAMES).then(() => ensureMedia('airline-logos', AIRLINE_NAMES))
+    const out: Record<string, { logo?: string; icon?: string }> = {}
+    for (const code of Object.keys(AIRLINE_NAMES)) {
+      const logo = mediaFile('airline-logos', code) ? `/api/media/airline-logos/${code}` : undefined
+      const icon = mediaFile('airline-icons', code) ? `/api/media/airline-icons/${code}` : undefined
+      if (logo || icon) out[code] = { logo, icon }
+    }
     return send(req, res, 200, out)
   }
-  const media = url.pathname.match(/^\/api\/media\/(airline-logos|airport-photos)\/([A-Z0-9]{3,4})$/i)
+  const media = url.pathname.match(/^\/api\/media\/(airline-logos|airline-icons|airport-photos)\/([A-Z0-9]{3,4})$/i)
   if (req.method === 'GET' && media) {
     const file = mediaFile(media[1] as MediaKind, media[2].toUpperCase())
     if (!file) return send(req, res, 404, { error: 'not downloaded' })
@@ -225,5 +229,7 @@ createServer((req, res) => {
 // has them offline. Already-downloaded ones are skipped.
 if (process.env.MEDIA_DOWNLOAD !== '0')
   setTimeout(() => {
-    void ensureMedia('airline-logos', AIRLINE_NAMES).then(() => ensureMedia('airport-photos', AIRPORT_NAMES))
+    void ensureMedia('airline-icons', AIRLINE_NAMES)
+      .then(() => ensureMedia('airline-logos', AIRLINE_NAMES))
+      .then(() => ensureMedia('airport-photos', AIRPORT_NAMES))
   }, 60_000)

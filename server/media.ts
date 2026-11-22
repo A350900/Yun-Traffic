@@ -6,9 +6,10 @@ import { join } from 'node:path'
  * the app works offline: airline logos (Encyclopedia mode) and airport photos
  * (airport card).
  *
- * Found through Wikidata: an airline by its ICAO code (property P230) and its
- * icon (P8972, a square emblem that suits the round badges) or else its logo
- * (P154); an airport by its ICAO code (P239) and its main image (P18).
+ * Found through Wikidata: an airline by its ICAO code (property P230), with its
+ * full logo (P154, shown in the expanded card) and its icon (P8972, a square
+ * emblem for the round badges); an airport by its ICAO code (P239) and its main
+ * image (P18).
  * Commons gives a 256/640 px version plus the author and license to credit.
  *
  * Wikimedia asks automated clients to keep requests low: lookups are batched
@@ -28,9 +29,10 @@ const CUSTOM = join(import.meta.dirname, '..', 'custom-media')
 const EXTS = ['png', 'svg', 'jpg', 'jpeg', 'webp']
 const DAY = 86_400_000
 
-export type MediaKind = 'airline-logos' | 'airport-photos'
+export type MediaKind = 'airline-logos' | 'airline-icons' | 'airport-photos'
 const SPEC: Record<MediaKind, { codeProp: string; imageProps: string[]; width: number }> = {
-  'airline-logos': { codeProp: 'P230', imageProps: ['P8972', 'P154'], width: 256 },
+  'airline-logos': { codeProp: 'P230', imageProps: ['P154'], width: 320 },
+  'airline-icons': { codeProp: 'P230', imageProps: ['P8972'], width: 160 },
   'airport-photos': { codeProp: 'P239', imageProps: ['P18'], width: 640 },
 }
 
@@ -51,8 +53,8 @@ export interface MediaEntry {
   v?: number
 }
 
-/** Bump to look everything up again (2: airline icons preferred over full logos). */
-const VERSION: Record<MediaKind, number> = { 'airline-logos': 2, 'airport-photos': 1 }
+/** Bump to look everything up again (3: full logos and icons kept separately). */
+const VERSION: Record<MediaKind, number> = { 'airline-logos': 3, 'airline-icons': 1, 'airport-photos': 1 }
 
 class RateLimited extends Error {}
 let pausedUntil = 0
@@ -140,10 +142,10 @@ async function findImages(kind: MediaKind, codes: string[], names: Record<string
           const code = String(c?.mainsnak?.datavalue?.value ?? '').toUpperCase()
           if (!(code in out)) continue
           // Codes get reused (defunct airlines): take the item whose name matches ours best.
-          const score = kind === 'airline-logos' ? nameMatch(names[code] ?? '', label) : 1
+          const score = kind !== 'airport-photos' ? nameMatch(names[code] ?? '', label) : 1
           const cur = out[code]
           if (!file) {
-            if ('reason' in cur && score > 0) out[code] = { reason: `no free ${kind === 'airline-logos' ? 'logo' : 'photo'} on Wikimedia Commons (Wikidata: ${label})` }
+            if ('reason' in cur && score > 0) out[code] = { reason: `no free ${kind === 'airline-logos' ? 'logo' : kind === 'airline-icons' ? 'icon' : 'photo'} on Wikimedia Commons (Wikidata: ${label})` }
             continue
           }
           if (score === 0) {

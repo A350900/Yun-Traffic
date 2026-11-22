@@ -16,18 +16,22 @@ export const COUNTRY_AIRLINES_LAYER = 'country-airlines'
 // with zoom), at extra resolution for the screen, so text stays crisp.
 const PX = Math.min(4, Math.ceil((window.devicePixelRatio || 1) * 1.5))
 /** badge diameter (logical px at the default zoom) */
-const D = 34
+const D = 40
 /** how far each badge sits to the right of the one in front (fraction of D) */
 const STEP = 0.74
 /** room around the badges for the separating ring and shadow */
 const M = 3
 
 type Country = { iso: string; name: string; lon: number; lat: number; areaKm2: number; airlines: [string, string][] }
-type LogoIndex = Record<string, { src: string }>
+/** per airline: full logo (expanded card) and square icon (badges), as served by our server */
+type LogoIndex = Record<string, { logo?: string; icon?: string }>
 
 let loading: Promise<void> | null = null
 let logos: LogoIndex = {}
+/** full logos (expanded card) */
 const images = new Map<string, HTMLImageElement>()
+/** emblem for the round badges: the icon, or the symbol cut out of the full logo */
+const emblems = new Map<string, CanvasImageSource & { width: number; height: number }>()
 let countries: Country[] = []
 let refreshTimer = 0
 
@@ -73,11 +77,11 @@ function drawStack(c: Country, font: string): ImageData {
     ctx.fill()
     // Badges behind another one are partly covered on the left: use the visible part.
     const covered = i > 0 ? D * (1 - STEP) : 0
-    const img = images.get(code)
-    if (img && img.naturalWidth) {
-      // The largest rectangle of the logo's shape that fits in the circle (wide
+    const img = emblems.get(code)
+    if (img && img.width) {
+      // The largest rectangle of the emblem's shape that fits in the circle (wide
       // wordmarks get the full width), minus what's covered, with a margin.
-      const a = img.naturalWidth / img.naturalHeight
+      const a = img.width / img.height
       const k = 0.86 / Math.sqrt(1 + a * a)
       let iw = 2 * inner * a * k
       let ih = 2 * inner * k
@@ -98,7 +102,7 @@ function drawStack(c: Country, font: string): ImageData {
       ctx.fillStyle = '#3d1426' // --brand-ink
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.font = `700 ${covered ? 9 : 10}px ${font}`
+      ctx.font = `700 ${covered ? 10.5 : 11.5}px ${font}`
       ctx.fillText(code, cx + covered / 2, cy + 0.5)
     }
     // faint outer ring in the brand colour
@@ -128,20 +132,122 @@ async function loadLogos(codes: string[]) {
   try {
     logos = await (await fetch('/api/media/airline-logos')).json()
   } catch {
-    return 0 // offline and no server: names only
+    return 0 // offline and no server: codes only
   }
   let added = 0
   await Promise.all(
     codes.map(async (code) => {
-      if (images.has(code) || !logos[code]) return
-      const img = await loadImage(logos[code].src)
-      if (img) {
-        images.set(code, img)
-        added++
+      const entry = logos[code]
+      if (!entry) return
+      if (entry.logo && !images.has(code)) {
+        const img = await loadImage(entry.logo)
+        if (img) {
+          images.set(code, img)
+          added++
+        }
+      }
+      if (!emblems.has(code) || (entry.icon && !(emblems.get(code) instanceof HTMLImageElement))) {
+        const icon = entry.icon ? await loadImage(entry.icon) : null
+        const emblem = icon ?? (images.get(code) ? emblemOf(images.get(code)!) : null)
+        if (emblem) {
+          emblems.set(code, emblem as HTMLImageElement)
+          added++
+        }
       }
     }),
   )
   return added
+}
+
+/**
+ * The emblem part of a logo, for the round badges: many airline logos are a
+ * symbol plus a wordmark side by side (Delta's triangle, Lufthansa's crane...).
+ * Columns with "ink" are found (non-transparent, and not the background colour
+ * in the corners); a clear gap splits the logo into pieces, and a roughly
+ * square piece at either end, much narrower than the whole, is the emblem.
+ * Returns null when there's no such piece (a pure wordmark).
+ */
+function emblemOf(img: HTMLImageElement): HTMLCanvasElement | null {
+  // Work on a rendered copy (~800 px wide, so cut-out emblems stay sharp). Crops
+  // are taken from this copy, not the image: Chrome ignores the source area when
+  // drawing part of an SVG.
+  const scale = Math.min(4, 800 / img.naturalWidth)
+  const w = Math.max(1, Math.round(img.naturalWidth * scale))
+  const h = Math.max(1, Math.round(img.naturalHeight * scale))
+  const cv = document.createElement('canvas')
+  cv.width = w
+  cv.height = h
+  const ctx = cv.getContext('2d', { willReadFrequently: true })!
+  ctx.drawImage(img, 0, 0, w, h)
+  const px = ctx.getImageData(0, 0, w, h).data
+  // background: transparent, or the colour of the top-left corner if opaque
+  const bg = px[3] > 200 ? [px[0], px[1], px[2]] : null
+  const ink = (i: number) =>
+    px[i + 3] > 60 && (!bg || Math.abs(px[i] - bg[0]) + Math.abs(px[i + 1] - bg[1]) + Math.abs(px[i + 2] - bg[2]) > 60)
+  const cols = new Array<number>(w).fill(0)
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (ink((y * w + x) * 4)) cols[x]++
+  // pieces separated by gaps of at least ~4% of the width
+  const minGap = Math.max(3, Math.round(w * 0.04))
+  const pieces: [number, number][] = []
+  let start = -1
+  let empty = 0
+  for (let x = 0; x <= w; x++) {
+    const on = x < w && cols[x] > 0
+    if (on) {
+      if (start < 0) start = x
+      empty = 0
+    } else if (start >= 0) {
+      empty++
+      if (empty >= minGap || x === w) {
+        pieces.push([start, x - empty + 1])
+        start = -1
+        empty = 0
+      }
+    }
+  }
+  if (!pieces.length) return null
+  // one piece: a logo that is only a symbol (use it) or only a wordmark (don't)
+  if (pieces.length === 1) return isSquarish(w, h, ink, pieces[0]) ? crop(cv, pieces[0], w, h, ink) : null
+  const total = pieces[pieces.length - 1][1] - pieces[0][0]
+  for (const piece of [pieces[0], pieces[pieces.length - 1]]) {
+    if ((piece[1] - piece[0]) / total > 0.45) continue
+    if (isSquarish(w, h, ink, piece)) return crop(cv, piece, w, h, ink)
+  }
+  return null
+}
+
+function rowsOf(w: number, h: number, ink: (i: number) => boolean, [x0, x1]: [number, number]) {
+  let top = h
+  let bottom = -1
+  for (let y = 0; y < h; y++)
+    for (let x = x0; x < x1; x++)
+      if (ink((y * w + x) * 4)) {
+        if (y < top) top = y
+        if (y > bottom) bottom = y
+        break
+      }
+  return [top, bottom + 1] as const
+}
+
+function isSquarish(w: number, h: number, ink: (i: number) => boolean, piece: [number, number]) {
+  const [top, bottom] = rowsOf(w, h, ink, piece)
+  const pw = piece[1] - piece[0]
+  const ph = bottom - top
+  return ph > 0 && pw / ph > 0.55 && pw / ph < 1.8
+}
+
+function crop(src: HTMLCanvasElement, piece: [number, number], w: number, h: number, ink: (i: number) => boolean) {
+  const [top, bottom] = rowsOf(w, h, ink, piece)
+  const sw = piece[1] - piece[0]
+  const sh = bottom - top
+  const out = document.createElement('canvas')
+  const k = Math.min(1, 256 / Math.max(sw, sh))
+  out.width = Math.max(1, Math.round(sw * k))
+  out.height = Math.max(1, Math.round(sh * k))
+  const o = out.getContext('2d')!
+  o.imageSmoothingQuality = 'high'
+  o.drawImage(src, piece[0], top, sw, sh, 0, 0, out.width, out.height)
+  return out
 }
 
 async function add(map: MLMap) {
@@ -184,7 +290,7 @@ async function add(map: MLMap) {
   // Logos still downloading on the server: look again every 2 minutes and swap them in.
   clearInterval(refreshTimer)
   refreshTimer = window.setInterval(async () => {
-    if (codes.every((c) => images.has(c))) return clearInterval(refreshTimer)
+    if (codes.every((c) => images.has(c) && emblems.has(c))) return clearInterval(refreshTimer)
     if (map.getLayer(COUNTRY_AIRLINES_LAYER) && map.getLayoutProperty(COUNTRY_AIRLINES_LAYER, 'visibility') !== 'none' && (await loadLogos(codes)) > 0) putImages(map)
   }, 120_000)
 }
@@ -239,7 +345,8 @@ export function expandStack(map: MLMap, iso: string) {
     rank.textContent = String(i + 1)
     const tile = document.createElement('span')
     tile.className = 'stack-tile'
-    const img = images.get(code)
+    // full logo here (the badges only show the emblem)
+    const img = images.get(code) ?? (emblems.get(code) instanceof HTMLImageElement ? (emblems.get(code) as HTMLImageElement) : undefined)
     if (img) {
       const im = document.createElement('img')
       im.src = img.src
@@ -260,7 +367,7 @@ export function expandStack(map: MLMap, iso: string) {
     list.append(li)
   })
   const credit = document.createElement('footer')
-  credit.textContent = c.airlines.some(([code]) => images.has(code)) ? 'Logos: Wikimedia Commons (trademarks of their owners)' : 'Logos not downloaded yet'
+  credit.textContent = c.airlines.some(([code]) => images.has(code) || emblems.has(code)) ? 'Logos: Wikimedia Commons (trademarks of their owners)' : 'Logos not downloaded yet'
   el.append(head, list, credit)
 
   popup = new Popup({ anchor: 'center', closeButton: false, closeOnClick: true, maxWidth: 'none', className: 'stack-popup' })
