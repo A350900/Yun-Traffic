@@ -2,8 +2,8 @@ import { Popup, type ExpressionSpecification, type Map as MLMap } from 'maplibre
 import { AIRPORT_LAYER } from './airports'
 
 /**
- * Encyclopedia mode: each country's main airlines (up to 3) as a "logo stack"
- * at the country's label point. Logos come from Wikimedia Commons, downloaded
+ * Encyclopedia mode: each country's main airlines (up to 3) as overlapping
+ * round badges (like a stack of coins, #1 in front) at the country's label point. Logos come from Wikimedia Commons, downloaded
  * by the server and served locally (works offline); until a logo is there, the
  * airline's name is shown instead. Stacks are scaled by country size, and where
  * they'd overlap the bigger country wins (smaller ones appear as you zoom in).
@@ -15,10 +15,12 @@ export const COUNTRY_AIRLINES_LAYER = 'country-airlines'
 // Drawn at about the size it's shown at the default zoom (scaled only ~0.85-1.25x
 // with zoom), at extra resolution for the screen, so text stays crisp.
 const PX = Math.min(4, Math.ceil((window.devicePixelRatio || 1) * 1.5))
-const SLOT_W = 50
-const SLOT_H = 26
-const GAP = 3
-const PAD = 4
+/** badge diameter (logical px at the default zoom) */
+const D = 34
+/** how far each badge sits to the right of the one in front (fraction of D) */
+const STEP = 0.74
+/** room around the badges for the separating ring and shadow */
+const M = 3
 
 type Country = { iso: string; name: string; lon: number; lat: number; areaKm2: number; airlines: [string, string][] }
 type LogoIndex = Record<string, { src: string }>
@@ -38,81 +40,75 @@ function loadImage(src: string) {
   })
 }
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath()
-  ctx.roundRect(x, y, w, h, r)
-}
-
-/** The airline's name, shrunk (and split over two lines if needed) to fit a tile. */
-function drawName(ctx: CanvasRenderingContext2D, name: string, x: number, y: number, font: string) {
-  const maxW = SLOT_W - 5
-  for (let size = 10.5; size >= 7.5; size -= 0.5) {
-    ctx.font = `600 ${size}px ${font}`
-    if (ctx.measureText(name).width <= maxW) {
-      ctx.fillText(name, x + SLOT_W / 2, y + SLOT_H / 2)
-      return
-    }
-    // two lines, split at the space nearest the middle
-    const words = name.split(' ')
-    if (words.length > 1 && size <= 9) {
-      let bestCut = 1
-      let bestDiff = Infinity
-      for (let i = 1; i < words.length; i++) {
-        const d = Math.abs(words.slice(0, i).join(' ').length - words.slice(i).join(' ').length)
-        if (d < bestDiff) (bestDiff = d), (bestCut = i)
-      }
-      const l1 = words.slice(0, bestCut).join(' ')
-      const l2 = words.slice(bestCut).join(' ')
-      if (Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width) <= maxW) {
-        ctx.fillText(l1, x + SLOT_W / 2, y + SLOT_H / 2 - size * 0.55)
-        ctx.fillText(l2, x + SLOT_W / 2, y + SLOT_H / 2 + size * 0.55)
-        return
-      }
-    }
-  }
-  ctx.font = `600 7.5px ${font}`
-  ctx.fillText(name.slice(0, 8) + '…', x + SLOT_W / 2, y + SLOT_H / 2)
-}
-
 function drawStack(c: Country, font: string): ImageData {
   const n = c.airlines.length
-  const w = PAD * 2 + n * SLOT_W + (n - 1) * GAP
-  const h = PAD * 2 + SLOT_H
+  const w = M * 2 + D + (n - 1) * D * STEP
+  const h = M * 2 + D
   const canvas = document.createElement('canvas')
-  canvas.width = w * PX
-  canvas.height = h * PX
+  canvas.width = Math.ceil(w * PX)
+  canvas.height = Math.ceil(h * PX)
   const ctx = canvas.getContext('2d')!
   ctx.scale(PX, PX)
-  // card
-  roundRect(ctx, 0.5, 0.5, w - 1, h - 1, 8)
-  ctx.fillStyle = 'rgba(22, 20, 29, 0.92)' // --panel-solid
-  ctx.fill()
-  ctx.strokeStyle = 'rgba(242, 198, 210, 0.35)' // --brand-soft, faint
-  ctx.lineWidth = 1
-  ctx.stroke()
-  // tiles
-  c.airlines.forEach(([code, name], i) => {
-    const x = PAD + i * (SLOT_W + GAP)
-    const y = PAD
-    roundRect(ctx, x, y, SLOT_W, SLOT_H, 5)
+  const r = D / 2
+  const inner = r - 1.6
+  // Back to front: #3 (right), #2, then #1 (left) on top.
+  for (let i = n - 1; i >= 0; i--) {
+    const [code] = c.airlines[i]
+    const cx = M + r + i * D * STEP
+    const cy = M + r
+    // shadow + dark ring that separates the overlapping badges
+    ctx.save()
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)'
+    ctx.shadowBlur = 3
+    ctx.shadowOffsetY = 1
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.fillStyle = '#16141d' // --panel-solid
+    ctx.fill()
+    ctx.restore()
+    // badge
+    ctx.beginPath()
+    ctx.arc(cx, cy, inner, 0, Math.PI * 2)
     ctx.fillStyle = '#fbf7f8'
     ctx.fill()
+    // Badges behind another one are partly covered on the left: use the visible part.
+    const covered = i > 0 ? D * (1 - STEP) : 0
     const img = images.get(code)
     if (img && img.naturalWidth) {
-      const pad = 2.5
-      const s = Math.min((SLOT_W - pad * 2) / img.naturalWidth, (SLOT_H - pad * 2) / img.naturalHeight)
-      const iw = img.naturalWidth * s
-      const ih = img.naturalHeight * s
+      // The largest rectangle of the logo's shape that fits in the circle (wide
+      // wordmarks get the full width), minus what's covered, with a margin.
+      const a = img.naturalWidth / img.naturalHeight
+      const k = 0.86 / Math.sqrt(1 + a * a)
+      let iw = 2 * inner * a * k
+      let ih = 2 * inner * k
+      if (covered) {
+        const shrink = Math.max(0, iw - (2 * inner * 0.86 - covered)) / iw
+        iw *= 1 - shrink
+        ih *= 1 - shrink
+      }
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(cx, cy, inner, 0, Math.PI * 2)
+      ctx.clip()
       ctx.imageSmoothingQuality = 'high'
-      ctx.drawImage(img, x + (SLOT_W - iw) / 2, y + (SLOT_H - ih) / 2, iw, ih)
+      ctx.drawImage(img, cx + covered / 2 - iw / 2, cy - ih / 2, iw, ih)
+      ctx.restore()
     } else {
+      // no logo yet: the ICAO code, in the visible part of the badge
       ctx.fillStyle = '#3d1426' // --brand-ink
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      drawName(ctx, name, x, y, font)
+      ctx.font = `700 ${covered ? 9 : 10}px ${font}`
+      ctx.fillText(code, cx + covered / 2, cy + 0.5)
     }
-  })
-  return ctx.getImageData(0, 0, w * PX, h * PX)
+    // faint outer ring in the brand colour
+    ctx.beginPath()
+    ctx.arc(cx, cy, r - 0.5, 0, Math.PI * 2)
+    ctx.strokeStyle = 'rgba(242, 198, 210, 0.45)'
+    ctx.lineWidth = 1
+    ctx.stroke()
+  }
+  return ctx.getImageData(0, 0, canvas.width, canvas.height)
 }
 
 /** Stack scale by land area: 0.8 for city-states up to 1 for large countries (kept readable). */

@@ -7,7 +7,8 @@ import { join } from 'node:path'
  * (airport card).
  *
  * Found through Wikidata: an airline by its ICAO code (property P230) and its
- * logo (P154); an airport by its ICAO code (P239) and its main image (P18).
+ * icon (P8972, a square emblem that suits the round badges) or else its logo
+ * (P154); an airport by its ICAO code (P239) and its main image (P18).
  * Commons gives a 256/640 px version plus the author and license to credit.
  *
  * Wikimedia asks automated clients to keep requests low: lookups are batched
@@ -28,9 +29,9 @@ const EXTS = ['png', 'svg', 'jpg', 'jpeg', 'webp']
 const DAY = 86_400_000
 
 export type MediaKind = 'airline-logos' | 'airport-photos'
-const SPEC: Record<MediaKind, { codeProp: string; imageProp: string; width: number }> = {
-  'airline-logos': { codeProp: 'P230', imageProp: 'P154', width: 256 },
-  'airport-photos': { codeProp: 'P239', imageProp: 'P18', width: 640 },
+const SPEC: Record<MediaKind, { codeProp: string; imageProps: string[]; width: number }> = {
+  'airline-logos': { codeProp: 'P230', imageProps: ['P8972', 'P154'], width: 256 },
+  'airport-photos': { codeProp: 'P239', imageProps: ['P18'], width: 640 },
 }
 
 export interface MediaEntry {
@@ -46,7 +47,12 @@ export interface MediaEntry {
   at: number
   /** why there's no image */
   reason?: string
+  /** lookup version (older entries are looked up again; see VERSION) */
+  v?: number
 }
+
+/** Bump to look everything up again (2: airline icons preferred over full logos). */
+const VERSION: Record<MediaKind, number> = { 'airline-logos': 2, 'airport-photos': 1 }
 
 class RateLimited extends Error {}
 let pausedUntil = 0
@@ -113,7 +119,7 @@ type Miss = { reason: string }
 
 /** ICAO codes -> Wikidata image file names (batched). `names` are ours, to pick the right item. */
 async function findImages(kind: MediaKind, codes: string[], names: Record<string, string>): Promise<Record<string, Found | Miss>> {
-  const { codeProp, imageProp } = SPEC[kind]
+  const { codeProp, imageProps } = SPEC[kind]
   const wd = 'https://www.wikidata.org/w/api.php?format=json&'
   const out: Record<string, Found | Miss> = Object.fromEntries(codes.map((c) => [c, { reason: 'not found on Wikidata by its ICAO code' }]))
   const best: Record<string, number> = {}
@@ -128,7 +134,8 @@ async function findImages(kind: MediaKind, codes: string[], names: Record<string
       await pause(1000)
       for (const e of Object.values(ents?.entities ?? {}) as any[]) {
         const label: string = e?.labels?.en?.value ?? ''
-        const file: string | undefined = e?.claims?.[imageProp]?.[0]?.mainsnak?.datavalue?.value
+        // first property that has an image (airlines: icon before full logo)
+        const file: string | undefined = imageProps.map((p) => e?.claims?.[p]?.[0]?.mainsnak?.datavalue?.value).find(Boolean)
         for (const c of e?.claims?.[codeProp] ?? []) {
           const code = String(c?.mainsnak?.datavalue?.value ?? '').toUpperCase()
           if (!(code in out)) continue
@@ -221,7 +228,7 @@ export function mediaFile(kind: MediaKind, code: string): string | null {
 
 /** Looked up recently enough (found, or not found within the last week). */
 function fresh(e: MediaEntry | undefined, kind: MediaKind, code: string) {
-  if (!e) return false
+  if (!e || (e.v ?? 1) < VERSION[kind]) return false
   if (e.file) return mediaFile(kind, code) !== null
   return Date.now() - e.at < 7 * DAY
 }
@@ -265,7 +272,7 @@ async function download(kind: MediaKind, items: Record<string, string>) {
     const f = found[code]
     const i = 'file' in f ? info[fileKey(f.file)] : undefined
     if (!('file' in f) || !i) {
-      idx[code] = { at: Date.now(), reason: 'reason' in f ? f.reason : 'file not found on Wikimedia Commons' }
+      idx[code] = { at: Date.now(), v: VERSION[kind], reason: 'reason' in f ? f.reason : 'file not found on Wikimedia Commons' }
       continue
     }
     const res = await get(i.url)
@@ -273,7 +280,7 @@ async function download(kind: MediaKind, items: Record<string, string>) {
     const ext = type.includes('png') ? 'png' : type.includes('svg') ? 'svg' : type.includes('webp') ? 'webp' : 'jpg'
     const file = `${code}.${ext}`
     writeFileSync(join(dir(kind), file), Buffer.from(await res.arrayBuffer()))
-    idx[code] = { file, label: f.label, author: i.author, license: i.license, link: i.link, at: Date.now() }
+    idx[code] = { file, label: f.label, author: i.author, license: i.license, link: i.link, at: Date.now(), v: VERSION[kind] }
     got++
     saveIndex(kind)
     await pause(400)
