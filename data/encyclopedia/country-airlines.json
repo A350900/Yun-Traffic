@@ -10,7 +10,8 @@
    "AE",
    "DE",
    "IT",
-   "GB"
+   "GB",
+   "FR"
   ],
   "closer": [
    "CH",
@@ -27,15 +28,8 @@
   "IT": "left",
   "GB": "bottom",
   "CH": "left",
-  "FR": "right"
- },
- "fullStack": {
-  "_about": "Countries in Europe that show all their airlines even zoomed out (elsewhere in Europe only the #1 shows until zoom 3).",
-  "countries": [
-   "GB",
-   "FR",
-   "IT"
-  ]
+  "FR": "right",
+  "ES": "top"
  },
  "countries": {
   "US": [

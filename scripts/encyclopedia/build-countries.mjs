@@ -16,7 +16,6 @@ const source = JSON.parse(readFileSync(join(ROOT, 'data', 'encyclopedia', 'count
 const airlines = source.countries
 const priority = new Set(source.priority?.countries ?? [])
 const closer = new Set(source.priority?.closer ?? [])
-const fullStack = new Set(source.fullStack?.countries ?? [])
 const anchors = source.anchors ?? source.priority?.anchors ?? {}
 
 // Air traffic per country: routes departing its airports in the route network.
@@ -61,7 +60,7 @@ for (const [iso, list] of Object.entries(airlines)) {
     missing.push(iso)
     continue
   }
-  countries.push({ iso, ...c, routes: routesFrom[iso] ?? 0, airlines: list, ...(priority.has(iso) ? { priority: true } : {}), ...(closer.has(iso) ? { priorityCloser: true } : {}), ...(fullStack.has(iso) ? { fullStack: true } : {}), ...(typeof anchors[iso] === 'string' ? { anchor: anchors[iso] } : {}) })
+  countries.push({ iso, ...c, routes: routesFrom[iso] ?? 0, airlines: list, ...(priority.has(iso) ? { priority: true } : {}), ...(closer.has(iso) ? { priorityCloser: true } : {}), ...(typeof anchors[iso] === 'string' ? { anchor: anchors[iso] } : {}) })
 }
 mkdirSync(join(ROOT, 'public', 'data'), { recursive: true })
 writeFileSync(

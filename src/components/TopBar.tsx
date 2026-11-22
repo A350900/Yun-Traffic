@@ -92,7 +92,7 @@ function TopBar({ mode, onModeChange }: { mode: AppMode; onModeChange: (m: AppMo
   return (
     <header className="topbar">
       <a className="brand" href="/" aria-label="Yún Traffic home">
-        <img src={THEMES[ACTIVE_THEME].logo} alt="Yún Traffic — Live Flight Tracking" />
+        <img src={THEMES[ACTIVE_THEME].logo} alt="Yún Traffic" />
       </a>
 
       <WorldClocks />

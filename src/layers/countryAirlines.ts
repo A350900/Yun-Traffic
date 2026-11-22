@@ -45,7 +45,7 @@ const INK_1 = '#fbf3f6'
 const INK_2 = '#e9d3da'
 const GLOW = 'rgba(8, 5, 12, 0.95)'
 
-type Country = { iso: string; name: string; lon: number; lat: number; areaKm2: number; routes?: number; airlines: [string, string][]; priority?: boolean; priorityCloser?: boolean; fullStack?: boolean; anchor?: string }
+type Country = { iso: string; name: string; lon: number; lat: number; areaKm2: number; routes?: number; airlines: [string, string][]; priority?: boolean; priorityCloser?: boolean; anchor?: string }
 /** per airline: full logo, as served by our server */
 type LogoIndex = Record<string, { logo?: string; icon?: string }>
 
@@ -139,17 +139,11 @@ function drawStack(c: Country, font: string): ImageData {
 /** Stack scale by land area: 0.8 for city-states up to 1 for large countries (kept readable). */
 const sizeFor = (areaKm2: number) => Math.max(0.8, Math.min(1, 0.6 + 0.07 * Math.log10(Math.max(areaKm2, 10))))
 
-/** In Europe (too crowded for three at world zoom), only each country's #1 airline is shown below this zoom. */
-const FULL_FROM_ZOOM = 3
-/** Countries treated as Europe for that (by their point): lon -25..45, lat 34..72. */
-const inEurope = (c: Country) => c.lon > -25 && c.lon < 45 && c.lat > 34 && c.lat < 72
-
 function putImages(map: MLMap) {
   const font = getComputedStyle(document.body).fontFamily || 'sans-serif'
   const put = (id: string, data: ImageData) => (map.hasImage(id) ? map.updateImage(id, data) : map.addImage(id, data, { pixelRatio: PX }))
   for (const c of countries) {
     put(`ca-${c.iso}`, drawStack(c, font))
-    put(`ca1-${c.iso}`, drawStack({ ...c, airlines: c.airlines.slice(0, 1) }, font))
   }
 }
 
@@ -237,7 +231,7 @@ async function add(map: MLMap) {
         features: countries.map((c) => ({
           type: 'Feature',
           // overlaps: priority countries first (own layer), then the country with more air traffic
-          properties: { iso: c.iso, name: c.name, k: sizeFor(c.areaKm2), rank: -(c.routes ?? 0), tier: c.priority ? -1 : tierOf(c.routes ?? 0), anchor: c.anchor ?? 'center', closer: !!c.priorityCloser, compact: inEurope(c) && !c.fullStack },
+          properties: { iso: c.iso, name: c.name, k: sizeFor(c.areaKm2), rank: -(c.routes ?? 0), tier: c.priority ? -1 : tierOf(c.routes ?? 0), anchor: c.anchor ?? 'center', closer: !!c.priorityCloser },
           geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
         })),
       },
@@ -260,8 +254,8 @@ async function add(map: MLMap) {
             : ['all', ['==', ['get', 'tier'], tier], ['any', ['!', ['get', 'closer']], ['<', ['zoom'], CLOSER_PRIORITY_ZOOM]]]) as unknown as FilterSpecification,
           minzoom: 1.7, // same as the airport pins
           layout: {
-            // Europe zoomed out: #1 airline only; elsewhere, and from FULL_FROM_ZOOM: all (up to 3)
-            'icon-image': ['step', ['zoom'], ['case', ['get', 'compact'], ['concat', 'ca1-', ['get', 'iso']], ['concat', 'ca-', ['get', 'iso']]], FULL_FROM_ZOOM, ['concat', 'ca-', ['get', 'iso']]] as unknown as ExpressionSpecification,
+            // all of the country's airlines (up to 3), at every zoom
+            'icon-image': ['concat', 'ca-', ['get', 'iso']] as unknown as ExpressionSpecification,
             // neighbours that would overlap sit to one side of their point (data: anchors)
             'icon-anchor': ['get', 'anchor'] as unknown as ExpressionSpecification,
             'icon-size': ['interpolate', ['linear'], ['zoom'], 1.7, ['*', 0.85, ['get', 'k']], 2.2, ['*', 0.95, ['get', 'k']], 4, ['*', 1.05, ['get', 'k']], 6, ['*', 1.25, ['get', 'k']]] as unknown as ExpressionSpecification,
