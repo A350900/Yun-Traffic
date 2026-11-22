@@ -14,6 +14,10 @@ import { AIRPORT_LAYER } from './airports'
 
 const SOURCE = 'country-airlines'
 export const COUNTRY_AIRLINES_LAYER = 'country-airlines'
+/** priority countries (small countries with big airlines) get their own layer on top: a higher layer is
+ *  placed first across all tiles, so they always win over neighbours (sort keys only work within a tile) */
+const PRIORITY_LAYER = 'country-airlines-priority'
+export const COUNTRY_AIRLINES_LAYERS = [COUNTRY_AIRLINES_LAYER, PRIORITY_LAYER]
 // Drawn at about the size it's shown at the default zoom (scaled only ~0.85-1.25x
 // with zoom), at extra resolution for the screen, so text stays crisp.
 const PX = Math.min(4, Math.ceil((window.devicePixelRatio || 1) * 1.5))
@@ -209,32 +213,37 @@ async function add(map: MLMap) {
         features: countries.map((c) => ({
           type: 'Feature',
           // overlaps: priority countries first (small countries with big airlines), then the bigger country
-          properties: { iso: c.iso, name: c.name, k: sizeFor(c.areaKm2), rank: c.priority ? -1e12 : -c.areaKm2, anchor: c.anchor ?? 'center' },
+          properties: { iso: c.iso, name: c.name, k: sizeFor(c.areaKm2), rank: -c.areaKm2, priority: Boolean(c.priority), anchor: c.anchor ?? 'center' },
           geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
         })),
       },
       attribution: 'Airline logos: <a href="https://commons.wikimedia.org" target="_blank" rel="noreferrer">Wikimedia Commons</a> (logos are trademarks of their owners)',
     })
-  if (!map.getLayer(COUNTRY_AIRLINES_LAYER))
-    map.addLayer(
-      {
-        id: COUNTRY_AIRLINES_LAYER,
-        type: 'symbol',
-        source: SOURCE,
-        minzoom: 1.7, // same as the airport pins
-        layout: {
-          'icon-image': ['concat', 'ca-', ['get', 'iso']],
-          // neighbours that would overlap sit to one side of their point (data: priority.anchors)
-          'icon-anchor': ['get', 'anchor'] as unknown as ExpressionSpecification,
-          'icon-size': ['interpolate', ['linear'], ['zoom'], 1.7, ['*', 0.85, ['get', 'k']], 2.2, ['*', 0.95, ['get', 'k']], 4, ['*', 1.05, ['get', 'k']], 6, ['*', 1.25, ['get', 'k']]] as unknown as ExpressionSpecification,
-          'icon-allow-overlap': false, // overlapping stacks: the bigger country is shown
-          'icon-padding': 3,
-          'symbol-sort-key': ['get', 'rank'],
+  const below = map.getLayer(AIRPORT_LAYER) ? AIRPORT_LAYER : undefined // under the airport pins
+  for (const [id, priority] of [[COUNTRY_AIRLINES_LAYER, false], [PRIORITY_LAYER, true]] as const)
+    if (!map.getLayer(id))
+      map.addLayer(
+        {
+          id,
+          type: 'symbol',
+          source: SOURCE,
+          filter: priority ? ['get', 'priority'] : ['!', ['get', 'priority']],
+          minzoom: 1.7, // same as the airport pins
+          layout: {
+            'icon-image': ['concat', 'ca-', ['get', 'iso']],
+            // neighbours that would overlap sit to one side of their point (data: priority.anchors)
+            'icon-anchor': ['get', 'anchor'] as unknown as ExpressionSpecification,
+            'icon-size': ['interpolate', ['linear'], ['zoom'], 1.7, ['*', 0.85, ['get', 'k']], 2.2, ['*', 0.95, ['get', 'k']], 4, ['*', 1.05, ['get', 'k']], 6, ['*', 1.25, ['get', 'k']]] as unknown as ExpressionSpecification,
+            // Priority stacks are always drawn (e.g. Hong Kong next to the HKG airport label) and
+            // still keep their space, so neighbours like Macau give way; others: the bigger country wins.
+            'icon-allow-overlap': priority,
+            'icon-padding': 3,
+            'symbol-sort-key': ['get', 'rank'],
+          },
+          paint: { 'icon-opacity': ['interpolate', ['linear'], ['zoom'], 1.7, 0, 2, 1] as unknown as ExpressionSpecification },
         },
-        paint: { 'icon-opacity': ['interpolate', ['linear'], ['zoom'], 1.7, 0, 2, 1] as unknown as ExpressionSpecification },
-      },
-      map.getLayer(AIRPORT_LAYER) ? AIRPORT_LAYER : undefined, // under the airport pins
-    )
+        below, // the priority layer is added second, so it sits above the normal one
+      )
   // Logos still downloading on the server: look again every 2 minutes and swap them in.
   clearInterval(refreshTimer)
   refreshTimer = window.setInterval(async () => {
@@ -249,7 +258,7 @@ export function setCountryAirlinesVisible(map: MLMap, visible: boolean) {
     loading ??= add(map).finally(() => (loading = null))
     return
   }
-  if (map.getLayer(COUNTRY_AIRLINES_LAYER)) map.setLayoutProperty(COUNTRY_AIRLINES_LAYER, 'visibility', visible ? 'visible' : 'none')
+  for (const id of COUNTRY_AIRLINES_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
   if (!visible) collapseStack()
 }
 

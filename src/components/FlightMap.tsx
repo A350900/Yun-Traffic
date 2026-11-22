@@ -15,7 +15,7 @@ import { addPathLayers, clearPath, updatePath } from '../flights/pathLayer'
 import { addAirportLayer, AIRPORT_LAYER, setAirportsVisible } from '../layers/airports'
 import { setFirVisible } from '../layers/fir'
 import { setOceanicVisible } from '../layers/oceanic'
-import { COUNTRY_AIRLINES_LAYER, expandStack, setCountryAirlinesVisible } from '../layers/countryAirlines'
+import { COUNTRY_AIRLINES_LAYERS, expandStack, setCountryAirlinesVisible } from '../layers/countryAirlines'
 import { extrapolate } from '../flights/position'
 import { F } from '../../shared/wire'
 import type { SimController } from '../sim/client' // simulated traffic
@@ -314,13 +314,14 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, country
       const pin = map.getLayer(AIRPORT_LAYER) ? map.queryRenderedFeatures(e.point, { layers: [AIRPORT_LAYER] })[0] : undefined
       if (pin) return onSelectAirportRef.current(pin.properties.icao as string)
       // Encyclopedia: a country's airline stack grows into a card.
-      const stack = map.getLayer(COUNTRY_AIRLINES_LAYER) ? map.queryRenderedFeatures(e.point, { layers: [COUNTRY_AIRLINES_LAYER] })[0] : undefined
+      const stackLayers = COUNTRY_AIRLINES_LAYERS.filter((id) => map.getLayer(id))
+      const stack = stackLayers.length ? map.queryRenderedFeatures(e.point, { layers: stackLayers })[0] : undefined
       if (stack) return expandStack(map, stack.properties.iso as string)
       const hit = map.queryRenderedFeatures(box, { layers: ICON_LAYERS })[0]
       // Clicking empty map clears the selection.
       onSelectRef.current((hit?.properties?.hex as string | undefined) ?? null)
     })
-    for (const id of [...ICON_LAYERS, AIRPORT_LAYER, COUNTRY_AIRLINES_LAYER]) {
+    for (const id of [...ICON_LAYERS, AIRPORT_LAYER, ...COUNTRY_AIRLINES_LAYERS]) {
       map.on('mouseenter', id, () => (map.getCanvas().style.cursor = 'pointer'))
       map.on('mouseleave', id, () => (map.getCanvas().style.cursor = ''))
     }
