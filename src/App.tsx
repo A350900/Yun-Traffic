@@ -47,6 +47,12 @@ export default function App() {
     return () => clearInterval(id)
   }, [])
 
+  // Stats list: open an airport's card
+  const openAirport = useCallback((icao: string) => {
+    setSelectedAirport(icao)
+    setSelected(null)
+  }, [])
+
   const onFeed = useCallback((s: FeedState) => {
     feedRef.current = s
   }, [])
@@ -109,7 +115,7 @@ export default function App() {
         now={serverNow}
         synthetic={synthetic}
       />}
-      <BottomDock layers={layers} onLayersChange={setLayers} radar={radar} settings={settings} onSettingsChange={setSettings} />
+      <BottomDock layers={layers} onLayersChange={setLayers} radar={radar} settings={settings} onSettingsChange={setSettings} onAirport={openAirport} />
     </main>
   )
 }

@@ -1,3 +1,4 @@
+import { setCurrentMap } from '../state/mapRef'
 import { memo, useEffect, useRef } from 'react'
 import { Map as MLMap, setWorkerUrl } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -151,6 +152,7 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, country
           'Aircraft data © <a href="https://adsb.lol" target="_blank">adsb.lol</a> (ODbL), <a href="https://opensky-network.org" target="_blank">The OpenSky Network</a>, <a href="https://airplanes.live" target="_blank">airplanes.live</a>',
       },
     })
+    setCurrentMap(map)
     mapRef.current = map
 
     // --- Live aircraft --------------------------------------------------
@@ -336,6 +338,7 @@ function FlightMap({ onSelect, onSelectAirport, firBoundaries, airports, country
       radar.detach()
       sim.disable() // simulated traffic
       feed.stop()
+      setCurrentMap(null)
       map.remove()
       mapRef.current = null
     }

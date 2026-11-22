@@ -3,6 +3,7 @@ import { FilterIcon, LayersIcon, SettingsIcon, StatsIcon, WeatherIcon } from './
 import LayersMenu from './LayersMenu'
 import WeatherPanel from './WeatherPanel'
 import SettingsPanel from './SettingsPanel'
+import StatsPanel from './StatsPanel'
 import type { Settings } from '../state/settings'
 import type { RadarController } from '../layers/radar'
 import type { LayerSettings } from '../state/layers'
@@ -21,9 +22,11 @@ interface Props {
   radar: RadarController
   settings: Settings
   onSettingsChange: (next: Settings) => void
+  /** A Stats list entry picked: open that airport. */
+  onAirport: (icao: string) => void
 }
 
-function BottomDock({ layers, onLayersChange, radar, settings, onSettingsChange }: Props) {
+function BottomDock({ layers, onLayersChange, radar, settings, onSettingsChange, onAirport }: Props) {
   const [active, setActive] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -48,6 +51,12 @@ function BottomDock({ layers, onLayersChange, radar, settings, onSettingsChange 
     <div className="dock-wrap" ref={ref}>
       {active === 'layers' && <LayersMenu layers={layers} onChange={onLayersChange} />}
       {active === 'weather' && <WeatherPanel radar={radar} layers={layers} onChange={onLayersChange} />}
+      {active === 'stats' && <StatsPanel
+          onAirport={(icao) => {
+            setActive(null) // out of the way, so the airport is in view
+            onAirport(icao)
+          }}
+        />}
       {active === 'settings' && <SettingsPanel settings={settings} onChange={onSettingsChange} />}
       <nav className="dock" aria-label="Map tools">
         {ITEMS.map((item) => (
@@ -55,7 +64,7 @@ function BottomDock({ layers, onLayersChange, radar, settings, onSettingsChange 
             key={item.id}
             className={active === item.id ? 'active' : ''}
             aria-pressed={active === item.id}
-            aria-expanded={['layers', 'weather', 'settings'].includes(item.id) ? active === item.id : undefined}
+            aria-expanded={['layers', 'weather', 'stats', 'settings'].includes(item.id) ? active === item.id : undefined}
             onClick={() => setActive(active === item.id ? null : item.id)}
           >
             {item.icon}
