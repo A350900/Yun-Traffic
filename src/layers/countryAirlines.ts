@@ -8,7 +8,7 @@ import { AIRPORT_LAYER } from './airports'
  * downloaded by the server and served locally (works offline); without one,
  * the airline's name is written in the same style.
  * Clicking opens a card with the full-colour logos. Scaled by country size;
- * where they'd overlap the bigger country wins (smaller ones appear on zoom).
+ * where they'd overlap the country with more air traffic wins (others appear on zoom).
  * Data: public/data/country-airlines.json (scripts/encyclopedia/build-countries.mjs).
  */
 
@@ -33,7 +33,7 @@ const INK_1 = '#fbf3f6'
 const INK_2 = '#e9d3da'
 const GLOW = 'rgba(8, 5, 12, 0.95)'
 
-type Country = { iso: string; name: string; lon: number; lat: number; areaKm2: number; airlines: [string, string][]; priority?: boolean; anchor?: string }
+type Country = { iso: string; name: string; lon: number; lat: number; areaKm2: number; routes?: number; airlines: [string, string][]; priority?: boolean; anchor?: string }
 /** per airline: full logo, as served by our server */
 type LogoIndex = Record<string, { logo?: string; icon?: string }>
 
@@ -76,7 +76,24 @@ function tint(code: string, mark: HTMLCanvasElement, color: string) {
 
 function drawStack(c: Country, font: string): ImageData {
   const n = c.airlines.length
-  const w = PAD * 2 + W1
+  // Measure first: the stack is only as wide as its widest airline (narrower
+  // boxes collide less, so more countries fit where it's crowded).
+  const m = document.createElement('canvas').getContext('2d')!
+  const rows = c.airlines.map(([code, name], i) => {
+    const W = i ? W2 : W1
+    const H = i ? H2 : H1
+    const mark = marks.get(code)
+    if (mark) {
+      const s = Math.min(W / mark.width, H / mark.height)
+      return { code, name, i, H, mark, w: mark.width * s, h: mark.height * s, size: 0 }
+    }
+    let size = i ? 10.5 : 13
+    m.font = `600 ${size}px ${font}`
+    while (size > 7.5 && m.measureText(name).width > W + 14) m.font = `600 ${(size -= 0.5)}px ${font}`
+    return { code, name, i, H, mark: null, w: m.measureText(name).width, h: H, size }
+  })
+  const contentW = Math.max(...rows.map((r) => r.w))
+  const w = PAD * 2 + contentW
   const h = PAD * 2 + H1 + (n - 1) * (H2 + GAP)
   const canvas = document.createElement('canvas')
   canvas.width = Math.ceil(w * PX)
@@ -84,48 +101,43 @@ function drawStack(c: Country, font: string): ImageData {
   const ctx = canvas.getContext('2d')!
   ctx.scale(PX, PX)
   ctx.imageSmoothingQuality = 'high'
-  c.airlines.forEach(([code, name], i) => {
-    const W = i ? W2 : W1
-    const H = i ? H2 : H1
-    const x = PAD + (W1 - W) / 2
-    const y = PAD + (i ? H1 + GAP + (i - 1) * (H2 + GAP) : 0)
-    const color = i ? INK_2 : INK_1
+  for (const r of rows) {
+    const y = PAD + (r.i ? H1 + GAP + (r.i - 1) * (H2 + GAP) : 0)
+    const color = r.i ? INK_2 : INK_1
     ctx.save()
     ctx.shadowColor = GLOW
     ctx.shadowBlur = 5
-    const mark = marks.get(code)
-    if (mark) {
-      const s = Math.min(W / mark.width, H / mark.height)
-      const mw = mark.width * s
-      const mh = mark.height * s
-      const t = tint(code, mark, color)
+    if (r.mark) {
+      const t = tint(r.code, r.mark, color)
       // twice: a stronger glow keeps light text readable over light map areas
-      for (let k = 0; k < 2; k++) ctx.drawImage(t, x + (W - mw) / 2, y + (H - mh) / 2, mw, mh)
+      for (let k = 0; k < 2; k++) ctx.drawImage(t, (w - r.w) / 2, y + (r.H - r.h) / 2, r.w, r.h)
     } else {
       // no logo yet: the airline's name in the same style
       ctx.fillStyle = color
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      let size = i ? 10.5 : 13
-      ctx.font = `600 ${size}px ${font}`
-      while (size > 7.5 && ctx.measureText(name).width > W + 14) ctx.font = `600 ${(size -= 0.5)}px ${font}`
-      for (let k = 0; k < 2; k++) ctx.fillText(name, x + W / 2, y + H / 2 + 0.5)
+      ctx.font = `600 ${r.size}px ${font}`
+      for (let k = 0; k < 2; k++) ctx.fillText(r.name, w / 2, y + r.H / 2 + 0.5)
     }
     ctx.restore()
-  })
+  }
   return ctx.getImageData(0, 0, canvas.width, canvas.height)
 }
 
 /** Stack scale by land area: 0.8 for city-states up to 1 for large countries (kept readable). */
 const sizeFor = (areaKm2: number) => Math.max(0.8, Math.min(1, 0.6 + 0.07 * Math.log10(Math.max(areaKm2, 10))))
 
+/** In Europe (too crowded for three at world zoom), only each country's #1 airline is shown below this zoom. */
+const FULL_FROM_ZOOM = 3
+/** Countries treated as Europe for that (by their point): lon -25..45, lat 34..72. */
+const inEurope = (c: Country) => c.lon > -25 && c.lon < 45 && c.lat > 34 && c.lat < 72
+
 function putImages(map: MLMap) {
   const font = getComputedStyle(document.body).fontFamily || 'sans-serif'
+  const put = (id: string, data: ImageData) => (map.hasImage(id) ? map.updateImage(id, data) : map.addImage(id, data, { pixelRatio: PX }))
   for (const c of countries) {
-    const id = `ca-${c.iso}`
-    const data = drawStack(c, font)
-    if (map.hasImage(id)) map.updateImage(id, data)
-    else map.addImage(id, data, { pixelRatio: PX })
+    put(`ca-${c.iso}`, drawStack(c, font))
+    put(`ca1-${c.iso}`, drawStack({ ...c, airlines: c.airlines.slice(0, 1) }, font))
   }
 }
 
@@ -212,8 +224,8 @@ async function add(map: MLMap) {
         type: 'FeatureCollection',
         features: countries.map((c) => ({
           type: 'Feature',
-          // overlaps: priority countries first (small countries with big airlines), then the bigger country
-          properties: { iso: c.iso, name: c.name, k: sizeFor(c.areaKm2), rank: -c.areaKm2, priority: Boolean(c.priority), anchor: c.anchor ?? 'center' },
+          // overlaps: priority countries first (own layer), then the country with more air traffic
+          properties: { iso: c.iso, name: c.name, k: sizeFor(c.areaKm2), rank: -(c.routes ?? 0), priority: Boolean(c.priority), anchor: c.anchor ?? 'center', compact: inEurope(c) },
           geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
         })),
       },
@@ -230,12 +242,13 @@ async function add(map: MLMap) {
           filter: priority ? ['get', 'priority'] : ['!', ['get', 'priority']],
           minzoom: 1.7, // same as the airport pins
           layout: {
-            'icon-image': ['concat', 'ca-', ['get', 'iso']],
-            // neighbours that would overlap sit to one side of their point (data: priority.anchors)
+            // Europe zoomed out: #1 airline only; elsewhere, and from FULL_FROM_ZOOM: all (up to 3)
+            'icon-image': ['step', ['zoom'], ['case', ['get', 'compact'], ['concat', 'ca1-', ['get', 'iso']], ['concat', 'ca-', ['get', 'iso']]], FULL_FROM_ZOOM, ['concat', 'ca-', ['get', 'iso']]] as unknown as ExpressionSpecification,
+            // neighbours that would overlap sit to one side of their point (data: anchors)
             'icon-anchor': ['get', 'anchor'] as unknown as ExpressionSpecification,
             'icon-size': ['interpolate', ['linear'], ['zoom'], 1.7, ['*', 0.85, ['get', 'k']], 2.2, ['*', 0.95, ['get', 'k']], 4, ['*', 1.05, ['get', 'k']], 6, ['*', 1.25, ['get', 'k']]] as unknown as ExpressionSpecification,
             // Priority stacks are always drawn (e.g. Hong Kong next to the HKG airport label) and
-            // still keep their space, so neighbours like Macau give way; others: the bigger country wins.
+            // still keep their space, so neighbours like Macau give way; others: more air traffic wins.
             'icon-allow-overlap': priority,
             'icon-padding': 3,
             'symbol-sort-key': ['get', 'rank'],

@@ -1,6 +1,7 @@
 // Builds public/data/country-airlines.json for Encyclopedia mode: each country
 // in data/encyclopedia/country-airlines.json with where to put its airline
-// stack (Natural Earth label point) and its land area (for sizing).
+// stack (Natural Earth label point), its land area (for sizing) and how many
+// airline routes depart it (data/sim/routes.json; which stack wins an overlap).
 // Natural Earth is public domain (naturalearthdata.com).
 //
 //   node scripts/encyclopedia/build-countries.mjs [path/to/ne_50m_admin_0_countries.geojson]
@@ -14,7 +15,15 @@ const ne = process.argv[2] ? JSON.parse(readFileSync(process.argv[2], 'utf8')) :
 const source = JSON.parse(readFileSync(join(ROOT, 'data', 'encyclopedia', 'country-airlines.json'), 'utf8'))
 const airlines = source.countries
 const priority = new Set(source.priority?.countries ?? [])
-const anchors = source.priority?.anchors ?? {}
+const anchors = source.anchors ?? source.priority?.anchors ?? {}
+
+// Air traffic per country: routes departing its airports in the route network.
+const airports = JSON.parse(readFileSync(join(ROOT, 'data', 'airports.json'), 'utf8'))
+const routesFrom = {}
+for (const [, dep] of JSON.parse(readFileSync(join(ROOT, 'data', 'sim', 'routes.json'), 'utf8')).routes) {
+  const c = airports[dep]?.[3]
+  if (c) routesFrom[c] = (routesFrom[c] ?? 0) + 1
+}
 
 // Area of a lon/lat ring on a sphere (km²).
 const R = 6371
@@ -50,7 +59,7 @@ for (const [iso, list] of Object.entries(airlines)) {
     missing.push(iso)
     continue
   }
-  countries.push({ iso, ...c, airlines: list, ...(priority.has(iso) ? { priority: true } : {}), ...(typeof anchors[iso] === 'string' ? { anchor: anchors[iso] } : {}) })
+  countries.push({ iso, ...c, routes: routesFrom[iso] ?? 0, airlines: list, ...(priority.has(iso) ? { priority: true } : {}), ...(typeof anchors[iso] === 'string' ? { anchor: anchors[iso] } : {}) })
 }
 mkdirSync(join(ROOT, 'public', 'data'), { recursive: true })
 writeFileSync(

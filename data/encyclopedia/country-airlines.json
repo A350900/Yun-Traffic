@@ -8,14 +8,15 @@
    "TW",
    "QA",
    "AE"
-  ],
-  "anchors": {
-   "_about": "Where a stack sits relative to its country's point: 'right' = to the left of it (the point is at the stack's right edge), 'left' = to the right of it, also 'top'/'bottom'. For neighbours that would otherwise overlap.",
-   "HK": "right",
-   "TW": "left",
-   "QA": "right",
-   "AE": "left"
-  }
+  ]
+ },
+ "anchors": {
+  "_about": "Where a country's airlines sit relative to its point, for neighbours that would otherwise overlap: 'right' = to the left of the point (the point is at the stack's right edge), 'left' = to the right, 'top' = below the point, 'bottom' = above it.",
+  "HK": "right",
+  "TW": "left",
+  "QA": "right",
+  "AE": "left",
+  "IT": "left"
  },
  "countries": {
   "US": [
