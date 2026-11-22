@@ -2,11 +2,13 @@ import { Popup, type ExpressionSpecification, type Map as MLMap } from 'maplibre
 import { AIRPORT_LAYER } from './airports'
 
 /**
- * Encyclopedia mode: each country's main airlines (up to 3) as overlapping
- * round badges (like a stack of coins, #1 in front) at the country's label point. Logos come from Wikimedia Commons, downloaded
- * by the server and served locally (works offline); until a logo is there, the
- * airline's name is shown instead. Stacks are scaled by country size, and where
- * they'd overlap the bigger country wins (smaller ones appear as you zoom in).
+ * Encyclopedia mode: each country's main airlines (up to 3) at the country's
+ * label point, as the text part of their logos (the wordmark, without the
+ * symbol) in one light colour with a dark glow, #1 larger on top. Logos come
+ * from Wikimedia Commons, downloaded by the server and served locally (works
+ * offline); without one, the airline's name is written in the same style.
+ * Clicking opens a card with the full-colour logos. Scaled by country size;
+ * where they'd overlap the bigger country wins (smaller ones appear on zoom).
  * Data: public/data/country-airlines.json (scripts/encyclopedia/build-countries.mjs).
  */
 
@@ -15,23 +17,29 @@ export const COUNTRY_AIRLINES_LAYER = 'country-airlines'
 // Drawn at about the size it's shown at the default zoom (scaled only ~0.85-1.25x
 // with zoom), at extra resolution for the screen, so text stays crisp.
 const PX = Math.min(4, Math.ceil((window.devicePixelRatio || 1) * 1.5))
-/** badge diameter (logical px at the default zoom) */
-const D = 40
-/** how far each badge sits to the right of the one in front (fraction of D) */
-const STEP = 0.74
-/** room around the badges for the separating ring and shadow */
-const M = 3
+/** box for the #1 airline, and for #2/#3 (logical px at the default zoom) */
+const W1 = 92
+const H1 = 21
+const W2 = 70
+const H2 = 15
+const GAP = 5
+/** room around the text for the glow */
+const PAD = 6
+const INK_1 = '#fbf3f6'
+const INK_2 = '#e9d3da'
+const GLOW = 'rgba(8, 5, 12, 0.95)'
 
 type Country = { iso: string; name: string; lon: number; lat: number; areaKm2: number; airlines: [string, string][] }
-/** per airline: full logo (expanded card) and square icon (badges), as served by our server */
+/** per airline: full logo, as served by our server */
 type LogoIndex = Record<string, { logo?: string; icon?: string }>
 
 let loading: Promise<void> | null = null
 let logos: LogoIndex = {}
 /** full logos (expanded card) */
 const images = new Map<string, HTMLImageElement>()
-/** emblem for the round badges: the icon, or the symbol cut out of the full logo */
-const emblems = new Map<string, CanvasImageSource & { width: number; height: number }>()
+/** the wordmark cut out of each logo, as an alpha mask (null: the logo has no text part) */
+const wordmarks = new Map<string, HTMLCanvasElement | null>()
+const tinted = new Map<string, HTMLCanvasElement>()
 let countries: Country[] = []
 let refreshTimer = 0
 
@@ -44,74 +52,63 @@ function loadImage(src: string) {
   })
 }
 
+/** A wordmark in one colour. */
+function tint(code: string, mark: HTMLCanvasElement, color: string) {
+  const key = `${code}|${color}`
+  let c = tinted.get(key)
+  if (!c) {
+    c = document.createElement('canvas')
+    c.width = mark.width
+    c.height = mark.height
+    const x = c.getContext('2d')!
+    x.drawImage(mark, 0, 0)
+    x.globalCompositeOperation = 'source-in'
+    x.fillStyle = color
+    x.fillRect(0, 0, c.width, c.height)
+    tinted.set(key, c)
+  }
+  return c
+}
+
 function drawStack(c: Country, font: string): ImageData {
   const n = c.airlines.length
-  const w = M * 2 + D + (n - 1) * D * STEP
-  const h = M * 2 + D
+  const w = PAD * 2 + W1
+  const h = PAD * 2 + H1 + (n - 1) * (H2 + GAP)
   const canvas = document.createElement('canvas')
   canvas.width = Math.ceil(w * PX)
   canvas.height = Math.ceil(h * PX)
   const ctx = canvas.getContext('2d')!
   ctx.scale(PX, PX)
-  const r = D / 2
-  const inner = r - 1.6
-  // Back to front: #3 (right), #2, then #1 (left) on top.
-  for (let i = n - 1; i >= 0; i--) {
-    const [code] = c.airlines[i]
-    const cx = M + r + i * D * STEP
-    const cy = M + r
-    // shadow + dark ring that separates the overlapping badges
+  ctx.imageSmoothingQuality = 'high'
+  c.airlines.forEach(([code, name], i) => {
+    const W = i ? W2 : W1
+    const H = i ? H2 : H1
+    const x = PAD + (W1 - W) / 2
+    const y = PAD + (i ? H1 + GAP + (i - 1) * (H2 + GAP) : 0)
+    const color = i ? INK_2 : INK_1
     ctx.save()
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)'
-    ctx.shadowBlur = 3
-    ctx.shadowOffsetY = 1
-    ctx.beginPath()
-    ctx.arc(cx, cy, r, 0, Math.PI * 2)
-    ctx.fillStyle = '#16141d' // --panel-solid
-    ctx.fill()
-    ctx.restore()
-    // badge
-    ctx.beginPath()
-    ctx.arc(cx, cy, inner, 0, Math.PI * 2)
-    ctx.fillStyle = '#fbf7f8'
-    ctx.fill()
-    // Badges behind another one are partly covered on the left: use the visible part.
-    const covered = i > 0 ? D * (1 - STEP) : 0
-    const img = emblems.get(code)
-    if (img && img.width) {
-      // The largest rectangle of the emblem's shape that fits in the circle (wide
-      // wordmarks get the full width), minus what's covered, with a margin.
-      const a = img.width / img.height
-      const k = 0.86 / Math.sqrt(1 + a * a)
-      let iw = 2 * inner * a * k
-      let ih = 2 * inner * k
-      if (covered) {
-        const shrink = Math.max(0, iw - (2 * inner * 0.86 - covered)) / iw
-        iw *= 1 - shrink
-        ih *= 1 - shrink
-      }
-      ctx.save()
-      ctx.beginPath()
-      ctx.arc(cx, cy, inner, 0, Math.PI * 2)
-      ctx.clip()
-      ctx.imageSmoothingQuality = 'high'
-      ctx.drawImage(img, cx + covered / 2 - iw / 2, cy - ih / 2, iw, ih)
-      ctx.restore()
+    ctx.shadowColor = GLOW
+    ctx.shadowBlur = 5
+    const mark = wordmarks.get(code)
+    if (mark) {
+      const s = Math.min(W / mark.width, H / mark.height)
+      const mw = mark.width * s
+      const mh = mark.height * s
+      const t = tint(code, mark, color)
+      // twice: a stronger glow keeps light text readable over light map areas
+      for (let k = 0; k < 2; k++) ctx.drawImage(t, x + (W - mw) / 2, y + (H - mh) / 2, mw, mh)
     } else {
-      // no logo yet: the ICAO code, in the visible part of the badge
-      ctx.fillStyle = '#3d1426' // --brand-ink
+      // no logo (or no text in it): the airline's name in the same style
+      ctx.fillStyle = color
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.font = `700 ${covered ? 10.5 : 11.5}px ${font}`
-      ctx.fillText(code, cx + covered / 2, cy + 0.5)
+      let size = i ? 10.5 : 13
+      ctx.font = `600 ${size}px ${font}`
+      while (size > 7.5 && ctx.measureText(name).width > W + 14) ctx.font = `600 ${(size -= 0.5)}px ${font}`
+      for (let k = 0; k < 2; k++) ctx.fillText(name, x + W / 2, y + H / 2 + 0.5)
     }
-    // faint outer ring in the brand colour
-    ctx.beginPath()
-    ctx.arc(cx, cy, r - 0.5, 0, Math.PI * 2)
-    ctx.strokeStyle = 'rgba(242, 198, 210, 0.45)'
-    ctx.lineWidth = 1
-    ctx.stroke()
-  }
+    ctx.restore()
+  })
   return ctx.getImageData(0, 0, canvas.width, canvas.height)
 }
 
@@ -132,45 +129,36 @@ async function loadLogos(codes: string[]) {
   try {
     logos = await (await fetch('/api/media/airline-logos')).json()
   } catch {
-    return 0 // offline and no server: codes only
+    return 0 // offline and no server: names only
   }
   let added = 0
   await Promise.all(
     codes.map(async (code) => {
-      const entry = logos[code]
-      if (!entry) return
-      if (entry.logo && !images.has(code)) {
-        const img = await loadImage(entry.logo)
-        if (img) {
-          images.set(code, img)
-          added++
-        }
-      }
-      if (!emblems.has(code) || (entry.icon && !(emblems.get(code) instanceof HTMLImageElement))) {
-        const icon = entry.icon ? await loadImage(entry.icon) : null
-        const emblem = icon ?? (images.get(code) ? emblemOf(images.get(code)!) : null)
-        if (emblem) {
-          emblems.set(code, emblem as HTMLImageElement)
-          added++
-        }
-      }
+      const src = logos[code]?.logo
+      if (!src || images.has(code)) return
+      const img = await loadImage(src)
+      if (!img) return
+      images.set(code, img)
+      wordmarks.set(code, wordmarkOf(img))
+      added++
     }),
   )
   return added
 }
 
 /**
- * The emblem part of a logo, for the round badges: many airline logos are a
- * symbol plus a wordmark side by side (Delta's triangle, Lufthansa's crane...).
- * Columns with "ink" are found (non-transparent, and not the background colour
- * in the corners); a clear gap splits the logo into pieces, and a roughly
- * square piece at either end, much narrower than the whole, is the emblem.
- * Returns null when there's no such piece (a pure wordmark).
+ * The text part of a logo (its wordmark), without the symbol. Many airline logos
+ * are a symbol plus a wordmark, side by side (Delta's triangle, Lufthansa's
+ * crane, Turkish's disc) or stacked (Emirates' calligraphy over "Emirates").
+ * "Ink" is what isn't transparent or the background colour; clear gaps split
+ * the logo into pieces; a roughly square piece at one end is the symbol and is
+ * dropped. Everything else is kept together (so spaced-out letters stay one
+ * word). Returned as an alpha mask (the background removed), to be recoloured.
+ * null when what's left isn't text-shaped (a logo that is only a symbol).
  */
-function emblemOf(img: HTMLImageElement): HTMLCanvasElement | null {
-  // Work on a rendered copy (~800 px wide, so cut-out emblems stay sharp). Crops
-  // are taken from this copy, not the image: Chrome ignores the source area when
-  // drawing part of an SVG.
+function wordmarkOf(img: HTMLImageElement): HTMLCanvasElement | null {
+  // Work on a rendered copy (~800 px wide). Crops come from this copy, not the
+  // image: Chrome ignores the source area when drawing part of an SVG.
   const scale = Math.min(4, 800 / img.naturalWidth)
   const w = Math.max(1, Math.round(img.naturalWidth * scale))
   const h = Math.max(1, Math.round(img.naturalHeight * scale))
@@ -182,71 +170,96 @@ function emblemOf(img: HTMLImageElement): HTMLCanvasElement | null {
   const px = ctx.getImageData(0, 0, w, h).data
   // background: transparent, or the colour of the top-left corner if opaque
   const bg = px[3] > 200 ? [px[0], px[1], px[2]] : null
-  const ink = (i: number) =>
-    px[i + 3] > 60 && (!bg || Math.abs(px[i] - bg[0]) + Math.abs(px[i + 1] - bg[1]) + Math.abs(px[i + 2] - bg[2]) > 60)
-  const cols = new Array<number>(w).fill(0)
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (ink((y * w + x) * 4)) cols[x]++
-  // pieces separated by gaps of at least ~4% of the width
-  const minGap = Math.max(3, Math.round(w * 0.04))
-  const pieces: [number, number][] = []
-  let start = -1
-  let empty = 0
-  for (let x = 0; x <= w; x++) {
-    const on = x < w && cols[x] > 0
-    if (on) {
-      if (start < 0) start = x
-      empty = 0
-    } else if (start >= 0) {
-      empty++
-      if (empty >= minGap || x === w) {
-        pieces.push([start, x - empty + 1])
-        start = -1
+  const inkAt = (x: number, y: number) => {
+    const i = (y * w + x) * 4
+    return px[i + 3] > 60 && (!bg || Math.abs(px[i] - bg[0]) + Math.abs(px[i + 1] - bg[1]) + Math.abs(px[i + 2] - bg[2]) > 60)
+  }
+  const inkBox = (x0: number, x1: number, y0: number, y1: number) => {
+    let t = y1, b = y0 - 1, l = x1, r = x0 - 1
+    for (let y = y0; y < y1; y++)
+      for (let x = x0; x < x1; x++)
+        if (inkAt(x, y)) {
+          if (y < t) t = y
+          if (y > b) b = y
+          if (x < l) l = x
+          if (x > r) r = x
+        }
+    return { x0: l, x1: r + 1, y0: t, y1: b + 1 }
+  }
+  /** runs of ink along one axis, split by gaps of at least `minGap` */
+  const runs = (len: number, has: (k: number) => boolean, minGap: number) => {
+    const out: [number, number][] = []
+    let start = -1
+    let empty = 0
+    for (let k = 0; k <= len; k++) {
+      if (k < len && has(k)) {
+        if (start < 0) start = k
         empty = 0
+      } else if (start >= 0) {
+        empty++
+        if (empty >= minGap || k === len) {
+          out.push([start, k - empty + 1])
+          start = -1
+          empty = 0
+        }
+      }
+    }
+    return out
+  }
+  const squarish = (bw: number, bh: number) => bh > 0 && bw / bh > 0.55 && bw / bh < 1.8
+
+  let box = inkBox(0, w, 0, h)
+  if (box.x1 <= box.x0) return null
+  // side by side: drop a square piece at either end
+  const cols = runs(w, (x) => { for (let y = box.y0; y < box.y1; y++) if (inkAt(x, y)) return true; return false }, Math.max(3, Math.round(w * 0.04)))
+  if (cols.length >= 2) {
+    const total = cols[cols.length - 1][1] - cols[0][0]
+    const ends = [0, cols.length - 1]
+    for (const e of ends) {
+      const [a, b] = cols[e]
+      const pb = inkBox(a, b, box.y0, box.y1)
+      const rest = cols.filter((_, k) => k !== e)
+      const rb = inkBox(rest[0][0], rest[rest.length - 1][1], box.y0, box.y1)
+      // A symbol is roughly square and taller than the text beside it (so the
+      // first or last letter of a widely spaced wordmark is never taken for one).
+      if ((b - a) / total <= 0.45 && squarish(b - a, pb.y1 - pb.y0) && pb.y1 - pb.y0 >= (rb.y1 - rb.y0) * 1.05) {
+        box = rb
+        break
       }
     }
   }
-  if (!pieces.length) return null
-  // one piece: a logo that is only a symbol (use it) or only a wordmark (don't)
-  if (pieces.length === 1) return isSquarish(w, h, ink, pieces[0]) ? crop(cv, pieces[0], w, h, ink) : null
-  const total = pieces[pieces.length - 1][1] - pieces[0][0]
-  for (const piece of [pieces[0], pieces[pieces.length - 1]]) {
-    if ((piece[1] - piece[0]) / total > 0.45) continue
-    if (isSquarish(w, h, ink, piece)) return crop(cv, piece, w, h, ink)
-  }
-  return null
-}
-
-function rowsOf(w: number, h: number, ink: (i: number) => boolean, [x0, x1]: [number, number]) {
-  let top = h
-  let bottom = -1
-  for (let y = 0; y < h; y++)
-    for (let x = x0; x < x1; x++)
-      if (ink((y * w + x) * 4)) {
-        if (y < top) top = y
-        if (y > bottom) bottom = y
+  // stacked: drop a square piece at the top or bottom
+  const rows = runs(box.y1 - box.y0, (k) => { for (let x = box.x0; x < box.x1; x++) if (inkAt(x, box.y0 + k)) return true; return false }, Math.max(3, Math.round(h * 0.06)))
+  if (rows.length >= 2) {
+    for (const e of [0, rows.length - 1]) {
+      const [a, b] = rows[e]
+      const pb = inkBox(box.x0, box.x1, box.y0 + a, box.y0 + b)
+      if (squarish(pb.x1 - pb.x0, b - a) && pb.x1 - pb.x0 < (box.x1 - box.x0) * 0.6) {
+        const rest = rows.filter((_, k) => k !== e)
+        box = inkBox(box.x0, box.x1, box.y0 + rest[0][0], box.y0 + rest[rest.length - 1][1])
         break
       }
-  return [top, bottom + 1] as const
-}
-
-function isSquarish(w: number, h: number, ink: (i: number) => boolean, piece: [number, number]) {
-  const [top, bottom] = rowsOf(w, h, ink, piece)
-  const pw = piece[1] - piece[0]
-  const ph = bottom - top
-  return ph > 0 && pw / ph > 0.55 && pw / ph < 1.8
-}
-
-function crop(src: HTMLCanvasElement, piece: [number, number], w: number, h: number, ink: (i: number) => boolean) {
-  const [top, bottom] = rowsOf(w, h, ink, piece)
-  const sw = piece[1] - piece[0]
-  const sh = bottom - top
+    }
+  }
+  const bw = box.x1 - box.x0
+  const bh = box.y1 - box.y0
+  if (bw <= 0 || bh <= 0 || bw / bh < 1.6) return null // not text-shaped: a symbol-only logo
+  // the wordmark as a mask: ink kept (with its own transparency), background cleared
   const out = document.createElement('canvas')
-  const k = Math.min(1, 256 / Math.max(sw, sh))
-  out.width = Math.max(1, Math.round(sw * k))
-  out.height = Math.max(1, Math.round(sh * k))
+  out.width = bw
+  out.height = bh
   const o = out.getContext('2d')!
-  o.imageSmoothingQuality = 'high'
-  o.drawImage(src, piece[0], top, sw, sh, 0, 0, out.width, out.height)
+  const m = o.createImageData(bw, bh)
+  for (let y = 0; y < bh; y++)
+    for (let x = 0; x < bw; x++) {
+      const sx = box.x0 + x
+      const sy = box.y0 + y
+      const i = (sy * w + sx) * 4
+      const j = (y * bw + x) * 4
+      m.data[j] = m.data[j + 1] = m.data[j + 2] = 255
+      m.data[j + 3] = inkAt(sx, sy) ? (bg ? 255 : px[i + 3]) : 0
+    }
+  o.putImageData(m, 0, 0)
   return out
 }
 
@@ -290,7 +303,7 @@ async function add(map: MLMap) {
   // Logos still downloading on the server: look again every 2 minutes and swap them in.
   clearInterval(refreshTimer)
   refreshTimer = window.setInterval(async () => {
-    if (codes.every((c) => images.has(c) && emblems.has(c))) return clearInterval(refreshTimer)
+    if (codes.every((c) => images.has(c))) return clearInterval(refreshTimer)
     if (map.getLayer(COUNTRY_AIRLINES_LAYER) && map.getLayoutProperty(COUNTRY_AIRLINES_LAYER, 'visibility') !== 'none' && (await loadLogos(codes)) > 0) putImages(map)
   }, 120_000)
 }
@@ -345,8 +358,8 @@ export function expandStack(map: MLMap, iso: string) {
     rank.textContent = String(i + 1)
     const tile = document.createElement('span')
     tile.className = 'stack-tile'
-    // full logo here (the badges only show the emblem)
-    const img = images.get(code) ?? (emblems.get(code) instanceof HTMLImageElement ? (emblems.get(code) as HTMLImageElement) : undefined)
+    // full-colour logo here (the map shows only its text part, in one colour)
+    const img = images.get(code)
     if (img) {
       const im = document.createElement('img')
       im.src = img.src
@@ -367,7 +380,7 @@ export function expandStack(map: MLMap, iso: string) {
     list.append(li)
   })
   const credit = document.createElement('footer')
-  credit.textContent = c.airlines.some(([code]) => images.has(code) || emblems.has(code)) ? 'Logos: Wikimedia Commons (trademarks of their owners)' : 'Logos not downloaded yet'
+  credit.textContent = c.airlines.some(([code]) => images.has(code)) ? 'Logos: Wikimedia Commons (trademarks of their owners)' : 'Logos not downloaded yet'
   el.append(head, list, credit)
 
   popup = new Popup({ anchor: 'center', closeButton: false, closeOnClick: true, maxWidth: 'none', className: 'stack-popup' })

@@ -191,7 +191,7 @@ createServer((req, res) => {
   // Downloaded images (airline logos, airport photos), served from this computer.
   if (req.method === 'GET' && url.pathname === '/api/media/airline-logos') {
     // fills in any missing ones in the background
-    void ensureMedia('airline-icons', AIRLINE_NAMES).then(() => ensureMedia('airline-logos', AIRLINE_NAMES))
+    void ensureMedia('airline-logos', AIRLINE_NAMES)
     const out: Record<string, { logo?: string; icon?: string }> = {}
     for (const code of Object.keys(AIRLINE_NAMES)) {
       const logo = mediaFile('airline-logos', code) ? `/api/media/airline-logos/${code}` : undefined
@@ -229,7 +229,5 @@ createServer((req, res) => {
 // has them offline. Already-downloaded ones are skipped.
 if (process.env.MEDIA_DOWNLOAD !== '0')
   setTimeout(() => {
-    void ensureMedia('airline-icons', AIRLINE_NAMES)
-      .then(() => ensureMedia('airline-logos', AIRLINE_NAMES))
-      .then(() => ensureMedia('airport-photos', AIRPORT_NAMES))
+    void ensureMedia('airline-logos', AIRLINE_NAMES).then(() => ensureMedia('airport-photos', AIRPORT_NAMES))
   }, 60_000)
