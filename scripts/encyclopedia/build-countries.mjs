@@ -11,7 +11,10 @@ import { join } from 'node:path'
 const ROOT = join(import.meta.dirname, '..', '..')
 const SRC = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson'
 const ne = process.argv[2] ? JSON.parse(readFileSync(process.argv[2], 'utf8')) : await (await fetch(SRC)).json()
-const airlines = JSON.parse(readFileSync(join(ROOT, 'data', 'encyclopedia', 'country-airlines.json'), 'utf8')).countries
+const source = JSON.parse(readFileSync(join(ROOT, 'data', 'encyclopedia', 'country-airlines.json'), 'utf8'))
+const airlines = source.countries
+const priority = new Set(source.priority?.countries ?? [])
+const anchors = source.priority?.anchors ?? {}
 
 // Area of a lon/lat ring on a sphere (km²).
 const R = 6371
@@ -47,7 +50,7 @@ for (const [iso, list] of Object.entries(airlines)) {
     missing.push(iso)
     continue
   }
-  countries.push({ iso, ...c, airlines: list })
+  countries.push({ iso, ...c, airlines: list, ...(priority.has(iso) ? { priority: true } : {}), ...(typeof anchors[iso] === 'string' ? { anchor: anchors[iso] } : {}) })
 }
 mkdirSync(join(ROOT, 'public', 'data'), { recursive: true })
 writeFileSync(

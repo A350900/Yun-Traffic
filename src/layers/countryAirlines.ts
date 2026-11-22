@@ -29,7 +29,7 @@ const INK_1 = '#fbf3f6'
 const INK_2 = '#e9d3da'
 const GLOW = 'rgba(8, 5, 12, 0.95)'
 
-type Country = { iso: string; name: string; lon: number; lat: number; areaKm2: number; airlines: [string, string][] }
+type Country = { iso: string; name: string; lon: number; lat: number; areaKm2: number; airlines: [string, string][]; priority?: boolean; anchor?: string }
 /** per airline: full logo, as served by our server */
 type LogoIndex = Record<string, { logo?: string; icon?: string }>
 
@@ -208,7 +208,8 @@ async function add(map: MLMap) {
         type: 'FeatureCollection',
         features: countries.map((c) => ({
           type: 'Feature',
-          properties: { iso: c.iso, name: c.name, k: sizeFor(c.areaKm2), rank: -c.areaKm2 },
+          // overlaps: priority countries first (small countries with big airlines), then the bigger country
+          properties: { iso: c.iso, name: c.name, k: sizeFor(c.areaKm2), rank: c.priority ? -1e12 : -c.areaKm2, anchor: c.anchor ?? 'center' },
           geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
         })),
       },
@@ -223,6 +224,8 @@ async function add(map: MLMap) {
         minzoom: 1.7, // same as the airport pins
         layout: {
           'icon-image': ['concat', 'ca-', ['get', 'iso']],
+          // neighbours that would overlap sit to one side of their point (data: priority.anchors)
+          'icon-anchor': ['get', 'anchor'] as unknown as ExpressionSpecification,
           'icon-size': ['interpolate', ['linear'], ['zoom'], 1.7, ['*', 0.85, ['get', 'k']], 2.2, ['*', 0.95, ['get', 'k']], 4, ['*', 1.05, ['get', 'k']], 6, ['*', 1.25, ['get', 'k']]] as unknown as ExpressionSpecification,
           'icon-allow-overlap': false, // overlapping stacks: the bigger country is shown
           'icon-padding': 3,

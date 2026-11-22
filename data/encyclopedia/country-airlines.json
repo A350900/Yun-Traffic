@@ -1,5 +1,22 @@
 {
  "_about": "Main airlines of each country (up to 3), for Encyclopedia mode. Curated estimate of the largest airlines by passengers/fleet (2024-25); edit freely. Airlines are [ICAO code, name]. Logos: scripts/encyclopedia/build-airline-logos.mjs.",
+ "priority": {
+  "_about": "Small countries with big airlines: shown before bigger neighbours where their airlines would overlap (otherwise the bigger country wins).",
+  "countries": [
+   "HK",
+   "SG",
+   "TW",
+   "QA",
+   "AE"
+  ],
+  "anchors": {
+   "_about": "Where a stack sits relative to its country's point: 'right' = to the left of it (the point is at the stack's right edge), 'left' = to the right of it, also 'top'/'bottom'. For neighbours that would otherwise overlap.",
+   "HK": "right",
+   "TW": "left",
+   "QA": "right",
+   "AE": "left"
+  }
+ },
  "countries": {
   "US": [
    [
