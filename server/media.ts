@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
@@ -17,15 +17,18 @@ import { join } from 'node:path'
  * answer pauses everything for a while. Files: .cache/media/<kind>/<ICAO>.<ext>,
  * index: .cache/media/<kind>.json.
  *
- * Your own images win: put a file named by the ICAO code in
- * custom-media/<kind>/ (e.g. custom-media/airline-logos/CES.png) and it's used
- * instead. Useful where Commons has no free version (detailed logos are often
- * copyrighted, so they aren't on Commons). That folder isn't uploaded to GitHub.
+ * Your own images win. Airline logos: put a file named by the airline's ICAO
+ * code in logos/ at the top of the project (e.g. logos/CES.png; any case,
+ * .png/.svg/.jpg/.jpeg/.webp). Also read: custom-media/<kind>/<CODE>.<ext>.
+ * Useful where Commons has no free version (detailed logos are often
+ * copyrighted, so they aren't on Commons). These folders aren't uploaded to GitHub.
  */
 
 const UA = { 'User-Agent': 'yun-traffic/0.1 (+https://github.com/A350900/Yun-Traffic)' }
 const ROOT = join(import.meta.dirname, '..', '.cache', 'media')
 const CUSTOM = join(import.meta.dirname, '..', 'custom-media')
+/** the simple folder for your own airline logos: logos/CES.png */
+const LOGOS = join(import.meta.dirname, '..', 'logos')
 const EXTS = ['png', 'svg', 'jpg', 'jpeg', 'webp']
 const DAY = 86_400_000
 
@@ -211,13 +214,25 @@ function saveIndex(kind: MediaKind) {
   writeFileSync(indexFile(kind), JSON.stringify(mediaIndex(kind)))
 }
 
-/** Your own image for this code (custom-media/<kind>/<CODE>.<ext>), if any. */
-export function customFile(kind: MediaKind, code: string): string | null {
-  for (const ext of EXTS) {
-    const f = join(CUSTOM, kind, `${code}.${ext}`)
-    if (existsSync(f)) return f
+/** A file named <code>.<ext> in a folder, any letter case. */
+function findIn(dir: string, code: string): string | null {
+  let names: string[]
+  try {
+    names = readdirSync(dir)
+  } catch {
+    return null
+  }
+  const want = code.toUpperCase()
+  for (const n of names) {
+    const dot = n.lastIndexOf('.')
+    if (dot > 0 && n.slice(0, dot).toUpperCase() === want && EXTS.includes(n.slice(dot + 1).toLowerCase())) return join(dir, n)
   }
   return null
+}
+
+/** Your own image for this code: logos/<CODE>.<ext> (airline logos), else custom-media/<kind>/. */
+export function customFile(kind: MediaKind, code: string): string | null {
+  return (kind === 'airline-logos' ? findIn(LOGOS, code) : null) ?? findIn(join(CUSTOM, kind), code)
 }
 
 /** Path of the image to use: your own, else the downloaded one. */

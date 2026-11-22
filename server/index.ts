@@ -204,7 +204,7 @@ createServer((req, res) => {
   if (req.method === 'GET' && media) {
     const file = mediaFile(media[1] as MediaKind, media[2].toUpperCase())
     if (!file) return send(req, res, 404, { error: 'not downloaded' })
-    const ext = file.split('.').pop()
+    const ext = file.split('.').pop()?.toLowerCase()
     // short cache: a logo you add to custom-media shows up on the next visit
     res.writeHead(200, { 'Content-Type': ext === 'png' ? 'image/png' : ext === 'svg' ? 'image/svg+xml' : ext === 'webp' ? 'image/webp' : 'image/jpeg', 'Cache-Control': 'public, max-age=300' })
     res.end(readFileSync(file))

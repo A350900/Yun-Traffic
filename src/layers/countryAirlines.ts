@@ -3,10 +3,10 @@ import { AIRPORT_LAYER } from './airports'
 
 /**
  * Encyclopedia mode: each country's main airlines (up to 3) at the country's
- * label point, as the text part of their logos (the wordmark, without the
- * symbol) in one light colour with a dark glow, #1 larger on top. Logos come
- * from Wikimedia Commons, downloaded by the server and served locally (works
- * offline); without one, the airline's name is written in the same style.
+ * label point, as their logos in one light colour with a dark glow, #1 larger
+ * on top. Logos: your own in logos/<ICAO>.png, else from Wikimedia Commons,
+ * downloaded by the server and served locally (works offline); without one,
+ * the airline's name is written in the same style.
  * Clicking opens a card with the full-colour logos. Scaled by country size;
  * where they'd overlap the bigger country wins (smaller ones appear on zoom).
  * Data: public/data/country-airlines.json (scripts/encyclopedia/build-countries.mjs).
@@ -37,8 +37,8 @@ let loading: Promise<void> | null = null
 let logos: LogoIndex = {}
 /** full logos (expanded card) */
 const images = new Map<string, HTMLImageElement>()
-/** the wordmark cut out of each logo, as an alpha mask (null: the logo has no text part) */
-const wordmarks = new Map<string, HTMLCanvasElement | null>()
+/** each logo as an alpha mask (trimmed, background removed), for the monochrome style */
+const marks = new Map<string, HTMLCanvasElement | null>()
 const tinted = new Map<string, HTMLCanvasElement>()
 let countries: Country[] = []
 let refreshTimer = 0
@@ -52,7 +52,7 @@ function loadImage(src: string) {
   })
 }
 
-/** A wordmark in one colour. */
+/** A logo in one colour. */
 function tint(code: string, mark: HTMLCanvasElement, color: string) {
   const key = `${code}|${color}`
   let c = tinted.get(key)
@@ -89,7 +89,7 @@ function drawStack(c: Country, font: string): ImageData {
     ctx.save()
     ctx.shadowColor = GLOW
     ctx.shadowBlur = 5
-    const mark = wordmarks.get(code)
+    const mark = marks.get(code)
     if (mark) {
       const s = Math.min(W / mark.width, H / mark.height)
       const mw = mark.width * s
@@ -98,7 +98,7 @@ function drawStack(c: Country, font: string): ImageData {
       // twice: a stronger glow keeps light text readable over light map areas
       for (let k = 0; k < 2; k++) ctx.drawImage(t, x + (W - mw) / 2, y + (H - mh) / 2, mw, mh)
     } else {
-      // no logo (or no text in it): the airline's name in the same style
+      // no logo yet: the airline's name in the same style
       ctx.fillStyle = color
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
@@ -139,7 +139,7 @@ async function loadLogos(codes: string[]) {
       const img = await loadImage(src)
       if (!img) return
       images.set(code, img)
-      wordmarks.set(code, wordmarkOf(img))
+      marks.set(code, logoMask(img))
       added++
     }),
   )
@@ -147,18 +147,13 @@ async function loadLogos(codes: string[]) {
 }
 
 /**
- * The text part of a logo (its wordmark), without the symbol. Many airline logos
- * are a symbol plus a wordmark, side by side (Delta's triangle, Lufthansa's
- * crane, Turkish's disc) or stacked (Emirates' calligraphy over "Emirates").
- * "Ink" is what isn't transparent or the background colour; clear gaps split
- * the logo into pieces; a roughly square piece at one end is the symbol and is
- * dropped. Everything else is kept together (so spaced-out letters stay one
- * word). Returned as an alpha mask (the background removed), to be recoloured.
- * null when what's left isn't text-shaped (a logo that is only a symbol).
+ * A logo as a mask for the monochrome style: the whole logo (symbol and text),
+ * trimmed to its edges so every logo sits at a consistent size, with any solid
+ * background removed ("ink" is what isn't transparent or the background colour
+ * in the corner). Recoloured when drawn. null if the image is empty.
  */
-function wordmarkOf(img: HTMLImageElement): HTMLCanvasElement | null {
-  // Work on a rendered copy (~800 px wide). Crops come from this copy, not the
-  // image: Chrome ignores the source area when drawing part of an SVG.
+function logoMask(img: HTMLImageElement): HTMLCanvasElement | null {
+  // Work on a rendered copy (~800 px wide; SVGs are drawn whole, then cropped).
   const scale = Math.min(4, 800 / img.naturalWidth)
   const w = Math.max(1, Math.round(img.naturalWidth * scale))
   const h = Math.max(1, Math.round(img.naturalHeight * scale))
@@ -170,81 +165,20 @@ function wordmarkOf(img: HTMLImageElement): HTMLCanvasElement | null {
   const px = ctx.getImageData(0, 0, w, h).data
   // background: transparent, or the colour of the top-left corner if opaque
   const bg = px[3] > 200 ? [px[0], px[1], px[2]] : null
-  const inkAt = (x: number, y: number) => {
-    const i = (y * w + x) * 4
-    return px[i + 3] > 60 && (!bg || Math.abs(px[i] - bg[0]) + Math.abs(px[i + 1] - bg[1]) + Math.abs(px[i + 2] - bg[2]) > 60)
-  }
-  const inkBox = (x0: number, x1: number, y0: number, y1: number) => {
-    let t = y1, b = y0 - 1, l = x1, r = x0 - 1
-    for (let y = y0; y < y1; y++)
-      for (let x = x0; x < x1; x++)
-        if (inkAt(x, y)) {
-          if (y < t) t = y
-          if (y > b) b = y
-          if (x < l) l = x
-          if (x > r) r = x
-        }
-    return { x0: l, x1: r + 1, y0: t, y1: b + 1 }
-  }
-  /** runs of ink along one axis, split by gaps of at least `minGap` */
-  const runs = (len: number, has: (k: number) => boolean, minGap: number) => {
-    const out: [number, number][] = []
-    let start = -1
-    let empty = 0
-    for (let k = 0; k <= len; k++) {
-      if (k < len && has(k)) {
-        if (start < 0) start = k
-        empty = 0
-      } else if (start >= 0) {
-        empty++
-        if (empty >= minGap || k === len) {
-          out.push([start, k - empty + 1])
-          start = -1
-          empty = 0
-        }
+  const inkAt = (i: number) =>
+    px[i + 3] > 60 && (!bg || Math.abs(px[i] - bg[0]) + Math.abs(px[i + 1] - bg[1]) + Math.abs(px[i + 2] - bg[2]) > 60)
+  let x0 = w, x1 = -1, y0 = h, y1 = -1
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++)
+      if (inkAt((y * w + x) * 4)) {
+        if (x < x0) x0 = x
+        if (x > x1) x1 = x
+        if (y < y0) y0 = y
+        if (y > y1) y1 = y
       }
-    }
-    return out
-  }
-  const squarish = (bw: number, bh: number) => bh > 0 && bw / bh > 0.55 && bw / bh < 1.8
-
-  let box = inkBox(0, w, 0, h)
-  if (box.x1 <= box.x0) return null
-  // side by side: drop a square piece at either end
-  const cols = runs(w, (x) => { for (let y = box.y0; y < box.y1; y++) if (inkAt(x, y)) return true; return false }, Math.max(3, Math.round(w * 0.04)))
-  if (cols.length >= 2) {
-    const total = cols[cols.length - 1][1] - cols[0][0]
-    const ends = [0, cols.length - 1]
-    for (const e of ends) {
-      const [a, b] = cols[e]
-      const pb = inkBox(a, b, box.y0, box.y1)
-      const rest = cols.filter((_, k) => k !== e)
-      const rb = inkBox(rest[0][0], rest[rest.length - 1][1], box.y0, box.y1)
-      // A symbol is roughly square and taller than the text beside it (so the
-      // first or last letter of a widely spaced wordmark is never taken for one).
-      if ((b - a) / total <= 0.45 && squarish(b - a, pb.y1 - pb.y0) && pb.y1 - pb.y0 >= (rb.y1 - rb.y0) * 1.05) {
-        box = rb
-        break
-      }
-    }
-  }
-  // stacked: drop a square piece at the top or bottom
-  const rows = runs(box.y1 - box.y0, (k) => { for (let x = box.x0; x < box.x1; x++) if (inkAt(x, box.y0 + k)) return true; return false }, Math.max(3, Math.round(h * 0.06)))
-  if (rows.length >= 2) {
-    for (const e of [0, rows.length - 1]) {
-      const [a, b] = rows[e]
-      const pb = inkBox(box.x0, box.x1, box.y0 + a, box.y0 + b)
-      if (squarish(pb.x1 - pb.x0, b - a) && pb.x1 - pb.x0 < (box.x1 - box.x0) * 0.6) {
-        const rest = rows.filter((_, k) => k !== e)
-        box = inkBox(box.x0, box.x1, box.y0 + rest[0][0], box.y0 + rest[rest.length - 1][1])
-        break
-      }
-    }
-  }
-  const bw = box.x1 - box.x0
-  const bh = box.y1 - box.y0
-  if (bw <= 0 || bh <= 0 || bw / bh < 1.6) return null // not text-shaped: a symbol-only logo
-  // the wordmark as a mask: ink kept (with its own transparency), background cleared
+  if (x1 < x0) return null
+  const bw = x1 - x0 + 1
+  const bh = y1 - y0 + 1
   const out = document.createElement('canvas')
   out.width = bw
   out.height = bh
@@ -252,12 +186,10 @@ function wordmarkOf(img: HTMLImageElement): HTMLCanvasElement | null {
   const m = o.createImageData(bw, bh)
   for (let y = 0; y < bh; y++)
     for (let x = 0; x < bw; x++) {
-      const sx = box.x0 + x
-      const sy = box.y0 + y
-      const i = (sy * w + sx) * 4
+      const i = ((y0 + y) * w + x0 + x) * 4
       const j = (y * bw + x) * 4
       m.data[j] = m.data[j + 1] = m.data[j + 2] = 255
-      m.data[j + 3] = inkAt(sx, sy) ? (bg ? 255 : px[i + 3]) : 0
+      m.data[j + 3] = inkAt(i) ? (bg ? 255 : px[i + 3]) : 0
     }
   o.putImageData(m, 0, 0)
   return out

@@ -27,5 +27,5 @@ if (missing.length) {
   console.log(`\nNo logo yet (shown as the airline's name) — ${missing.length}:`)
   const idx = mediaIndex('airline-logos')
   for (const c of missing) console.log(`  ${c}  ${airlines[c]}: ${idx[c]?.reason ?? 'not looked up yet (try again later)'}`)
-  console.log(`\nTo use your own logo, save it as custom-media/airline-logos/<CODE>.png (or .svg/.jpg/.webp), e.g. custom-media/airline-logos/CES.png`)
+  console.log(`\nTo use your own logo, save it in the logos folder named by the ICAO code above, e.g. logos/CES.png (.png/.svg/.jpg/.webp)`)
 }

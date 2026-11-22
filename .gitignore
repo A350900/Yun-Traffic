@@ -30,3 +30,7 @@ logs
 
 # Your own logos/photos (see server/media.ts); not uploaded
 custom-media/
+
+# Your own airline logos (only the README is in git)
+logos/*
+!logos/README.md
