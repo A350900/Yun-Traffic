@@ -62,10 +62,35 @@ let refreshTimer = 0
 function loadImage(src: string) {
   return new Promise<HTMLImageElement | null>((resolve) => {
     const img = new Image()
-    img.onload = () => resolve(img)
+    img.onload = () => (img.naturalWidth && img.naturalHeight ? resolve(img) : sizedSvg(src).then(resolve))
     img.onerror = () => resolve(null)
     img.src = src
   })
+}
+
+/**
+ * An SVG with no width/height of its own (only a viewBox) loads with no size
+ * and would draw as nothing: give it one from its viewBox and load it again.
+ */
+async function sizedSvg(src: string): Promise<HTMLImageElement | null> {
+  try {
+    const text = await (await fetch(src)).text()
+    const vb = text.match(/viewBox\s*=\s*["']\s*[-\d.e]+[\s,]+[-\d.e]+[\s,]+([\d.e]+)[\s,]+([\d.e]+)/i)
+    const [w, h] = vb ? [Number(vb[1]), Number(vb[2])] : [800, 400]
+    if (!(w > 0 && h > 0)) return null
+    const scale = 800 / w
+    const fixed = text.replace(/<svg\b([^>]*)>/i, (_m, attrs: string) => `<svg${attrs.replace(/\s(width|height)\s*=\s*("[^"]*"|'[^']*')/gi, '')} width="${w * scale}" height="${h * scale}">`)
+    const url = URL.createObjectURL(new Blob([fixed], { type: 'image/svg+xml' }))
+    const img = await new Promise<HTMLImageElement | null>((resolve) => {
+      const i = new Image()
+      i.onload = () => resolve(i.naturalWidth ? i : null)
+      i.onerror = () => resolve(null)
+      i.src = url
+    })
+    return img
+  } catch {
+    return null
+  }
 }
 
 /** A logo in one colour. */

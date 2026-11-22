@@ -30,7 +30,7 @@ const ROOT = join(import.meta.dirname, '..', '.cache', 'media')
 const CUSTOM = join(import.meta.dirname, '..', 'custom-media')
 /** the simple folder for your own airline logos: logos/CES.png */
 const LOGOS = join(import.meta.dirname, '..', 'logos')
-const EXTS = ['png', 'svg', 'jpg', 'jpeg', 'webp']
+const EXTS = ['png', 'svg', 'jpg', 'jpeg', 'webp', 'gif']
 const DAY = 86_400_000
 
 export type MediaKind = 'airline-logos' | 'airline-icons' | 'airport-photos'
@@ -245,7 +245,7 @@ export function setAirlineNames(names: Record<string, string>, aliases: Record<s
 }
 
 /** Words of a file name that aren't the airline's name ("logo", "svg", years...). */
-const FILE_NOISE = new Set(['logo', 'logos', 'svg', 'png', 'jpg', 'jpeg', 'webp', 'new', 'old', 'current', 'wordmark', 'file', 'vector', 'icon', 'emblem', 'horizontal', 'vertical', 'color', 'colour', 'white', 'black', 'dark', 'light'])
+const FILE_NOISE = new Set(['logo', 'logos', 'svg', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'present', 'en', 'ja', 'jp', 'new', 'old', 'current', 'wordmark', 'file', 'vector', 'icon', 'emblem', 'horizontal', 'vertical', 'color', 'colour', 'white', 'black', 'dark', 'light'])
 const fileWords = (file: string) =>
   file
     .replace(/\.[a-z0-9]+$/i, '')

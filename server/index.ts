@@ -203,8 +203,15 @@ createServer((req, res) => {
     void ensureMedia('airline-logos', AIRLINE_NAMES)
     const out: Record<string, { logo?: string; icon?: string }> = {}
     for (const code of Object.keys(AIRLINE_NAMES)) {
-      const logo = mediaFile('airline-logos', code) ? `/api/media/airline-logos/${code}` : undefined
-      const icon = mediaFile('airline-icons', code) ? `/api/media/airline-icons/${code}` : undefined
+      // ?v= changes when the file does (e.g. you drop a new logo in logos/), so browsers never show a stale copy
+      const link = (kind: MediaKind) => {
+        const file = mediaFile(kind, code)
+        if (!file) return undefined
+        const st = statSync(file)
+        return `/api/media/${kind}/${code}?v=${Math.round(st.mtimeMs).toString(36)}${st.size.toString(36)}`
+      }
+      const logo = link('airline-logos')
+      const icon = link('airline-icons')
       if (logo || icon) out[code] = { logo, icon }
     }
     return send(req, res, 200, out)
@@ -214,8 +221,9 @@ createServer((req, res) => {
     const file = mediaFile(media[1] as MediaKind, media[2].toUpperCase())
     if (!file) return send(req, res, 404, { error: 'not downloaded' })
     const ext = file.split('.').pop()?.toLowerCase()
-    // short cache: a logo you add to custom-media shows up on the next visit
-    res.writeHead(200, { 'Content-Type': ext === 'png' ? 'image/png' : ext === 'svg' ? 'image/svg+xml' : ext === 'webp' ? 'image/webp' : 'image/jpeg', 'Cache-Control': 'public, max-age=300' })
+    // cached long only when asked for with ?v= (that changes with the file); otherwise always re-checked
+    const cache = url.searchParams.has('v') ? 'public, max-age=31536000, immutable' : 'no-cache'
+    res.writeHead(200, { 'Content-Type': ext === 'png' ? 'image/png' : ext === 'svg' ? 'image/svg+xml' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg', 'Cache-Control': cache })
     res.end(readFileSync(file))
     return
   }
