@@ -9,7 +9,7 @@ if (process.env.HTTPS_PROXY || process.env.https_proxy) {
   const { EnvHttpProxyAgent, setGlobalDispatcher } = await import('undici')
   setGlobalDispatcher(new EnvHttpProxyAgent())
 }
-const { ensureMedia, mediaIndex, mediaFile } = await import('../server/media.ts')
+const { ensureMedia, mediaIndex, mediaFile, setAirlineNames, logosByName } = await import('../server/media.ts')
 
 const airlines = Object.fromEntries(
   Object.values(JSON.parse(readFileSync(join(ROOT, 'data', 'encyclopedia', 'country-airlines.json'), 'utf8')).countries as [string, string][][]).flat(),
@@ -17,6 +17,13 @@ const airlines = Object.fromEntries(
 const airports = Object.fromEntries(
   (JSON.parse(readFileSync(join(ROOT, 'data', 'major-airports.json'), 'utf8')).airports as string[][]).map((a) => [a[0], a[2]]),
 )
+setAirlineNames(airlines, JSON.parse(readFileSync(join(ROOT, 'data', 'encyclopedia', 'airline-aliases.json'), 'utf8')))
+const yours = logosByName().report
+if (yours.length) {
+  console.log('Your logos (logos folder):')
+  for (const r of yours) console.log(`  ${r.file} -> ${r.code ? `${r.code} (${r.note})` : `not used: ${r.note}`}`)
+  console.log('')
+}
 await ensureMedia('airline-logos', airlines)
 await ensureMedia('airport-photos', airports)
 const count = (kind: 'airline-logos' | 'airline-icons' | 'airport-photos', codes: string[]) => codes.filter((c) => mediaFile(kind, c)).length

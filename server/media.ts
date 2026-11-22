@@ -17,9 +17,10 @@ import { join } from 'node:path'
  * answer pauses everything for a while. Files: .cache/media/<kind>/<ICAO>.<ext>,
  * index: .cache/media/<kind>.json.
  *
- * Your own images win. Airline logos: put a file named by the airline's ICAO
- * code in logos/ at the top of the project (e.g. logos/CES.png; any case,
- * .png/.svg/.jpg/.jpeg/.webp). Also read: custom-media/<kind>/<CODE>.<ext>.
+ * Your own images win. Airline logos: put a file in logos/ at the top of the
+ * project, named by the airline's ICAO code (logos/CES.png) or by its name as
+ * downloaded from Wikipedia (China_Eastern_Airlines_logo.svg); any case,
+ * .png/.svg/.jpg/.jpeg/.webp. Also read: custom-media/<kind>/<CODE>.<ext>.
  * Useful where Commons has no free version (detailed logos are often
  * copyrighted, so they aren't on Commons). These folders aren't uploaded to GitHub.
  */
@@ -230,9 +231,77 @@ function findIn(dir: string, code: string): string | null {
   return null
 }
 
-/** Your own image for this code: logos/<CODE>.<ext> (airline logos), else custom-media/<kind>/. */
+// ---------------------------------------------------------------- logos/ by airline name
+
+/** Airlines to recognise in logo file names: ICAO code -> names (ours + aliases). */
+let airlineNames: Record<string, string[]> = {}
+export function setAirlineNames(names: Record<string, string>, aliases: Record<string, string[] | string> = {}) {
+  airlineNames = {}
+  for (const [code, name] of Object.entries(names)) {
+    const extra = aliases[code]
+    airlineNames[code] = [name, ...(Array.isArray(extra) ? extra : [])]
+  }
+  byName = null
+}
+
+/** Words of a file name that aren't the airline's name ("logo", "svg", years...). */
+const FILE_NOISE = new Set(['logo', 'logos', 'svg', 'png', 'jpg', 'jpeg', 'webp', 'new', 'old', 'current', 'wordmark', 'file', 'vector', 'icon', 'emblem', 'horizontal', 'vertical', 'color', 'colour', 'white', 'black', 'dark', 'light'])
+const fileWords = (file: string) =>
+  file
+    .replace(/\.[a-z0-9]+$/i, '')
+    .replace(/[_\-()]+/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w && !FILE_NOISE.has(w.toLowerCase()) && !/^\d+$/.test(w))
+    .join(' ')
+
+type NameMatches = { byCode: Map<string, string>; report: { file: string; code: string | null; note: string }[] }
+let byName: (NameMatches & { key: string }) | null = null
+
+/**
+ * Logos in logos/ named after an airline (e.g. United_Airlines_Logo.svg): each
+ * file goes to the airline whose name (or alias) matches it best. A file named
+ * by its ICAO code is matched by findIn() instead. Ties are skipped, not guessed.
+ */
+export function logosByName(): NameMatches {
+  let names: string[] = []
+  try {
+    names = readdirSync(LOGOS).filter((n) => EXTS.includes(n.split('.').pop()!.toLowerCase()))
+  } catch {
+    /* no folder */
+  }
+  const key = names.join('|')
+  if (byName && byName.key === key) return byName
+  const byCode = new Map<string, string>()
+  const report: NameMatches['report'] = []
+  for (const file of names) {
+    const stem = file.replace(/\.[a-z0-9]+$/i, '')
+    if (/^[A-Z0-9]{3}$/i.test(stem)) continue // named by code
+    const words = fileWords(file)
+    let best = 0
+    let bestCodes: string[] = []
+    for (const [code, list] of Object.entries(airlineNames)) {
+      const score = Math.max(...list.map((n) => nameMatch(n, words)))
+      if (score > best) (best = score), (bestCodes = [code])
+      else if (score === best && score > 0) bestCodes.push(code)
+    }
+    if (!best) report.push({ file, code: null, note: 'no airline with this name in the list' })
+    else if (bestCodes.length > 1) report.push({ file, code: null, note: `could be ${bestCodes.join(' or ')}: rename it to the code (e.g. ${bestCodes[0]}.png)` })
+    else {
+      byCode.set(bestCodes[0], join(LOGOS, file))
+      report.push({ file, code: bestCodes[0], note: airlineNames[bestCodes[0]][0] })
+    }
+  }
+  byName = { byCode, report, key }
+  return byName
+}
+
+/** Your own image for this code: logos/<CODE>.<ext> or a logo named after the airline, else custom-media/<kind>/. */
 export function customFile(kind: MediaKind, code: string): string | null {
-  return (kind === 'airline-logos' ? findIn(LOGOS, code) : null) ?? findIn(join(CUSTOM, kind), code)
+  if (kind === 'airline-logos') {
+    const own = findIn(LOGOS, code) ?? logosByName().byCode.get(code) ?? null
+    if (own) return own
+  }
+  return findIn(join(CUSTOM, kind), code)
 }
 
 /** Path of the image to use: your own, else the downloaded one. */

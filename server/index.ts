@@ -11,7 +11,7 @@ import { flightInfo, flightPhoto, flightTrace, onTraceRequest } from './flightIn
 import type { FlightTrace } from '../shared/wire.ts'
 import { airportPhoto, AIRPORT_NAMES } from './airportPhoto.ts'
 import { natTracks } from './natTracks.ts'
-import { ensureMedia, mediaFile, type MediaKind } from './media.ts'
+import { ensureMedia, logosByName, mediaFile, setAirlineNames, type MediaKind } from './media.ts'
 import { SimRecorder } from './sim/recorder.ts' // simulated traffic
 
 /** Airlines shown in Encyclopedia mode (ICAO -> name), for their logos. */
@@ -20,6 +20,9 @@ const AIRLINE_NAMES: Record<string, string> = Object.fromEntries(
     .flat()
     .map(([code, name]) => [code, name]),
 )
+setAirlineNames(AIRLINE_NAMES, JSON.parse(readFileSync(join(import.meta.dirname, '..', 'data', 'encyclopedia', 'airline-aliases.json'), 'utf8')))
+// Say which of your logos (logos/ folder) were recognised.
+for (const r of logosByName().report) console.log(`[logos] ${r.file} -> ${r.code ? `${r.code} (${r.note})` : `not used: ${r.note}`}`)
 import type { AircraftResponse } from '../shared/wire.ts'
 
 // Honour HTTPS_PROXY when one is set (e.g. in sandboxed/corporate networks).
