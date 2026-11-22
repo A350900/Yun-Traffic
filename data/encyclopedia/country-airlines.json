@@ -9,8 +9,14 @@
    "QA",
    "AE",
    "DE",
-   "IT"
-  ]
+   "IT",
+   "GB"
+  ],
+  "closer": [
+   "CH",
+   "NL"
+  ],
+  "_closer": "Priority only from zoom 3 up (at the default zoom they would push out bigger neighbours)."
  },
  "anchors": {
   "_about": "Where a country's airlines sit relative to its point, for neighbours that would otherwise overlap: 'right' = to the left of the point (the point is at the stack's right edge), 'left' = to the right, 'top' = below the point, 'bottom' = above it.",
@@ -18,7 +24,15 @@
   "TW": "left",
   "QA": "right",
   "AE": "left",
-  "IT": "left"
+  "IT": "left",
+  "GB": "bottom",
+  "CH": "left"
+ },
+ "fullStack": {
+  "_about": "Countries in Europe that show all their airlines even zoomed out (elsewhere in Europe only the #1 shows until zoom 3).",
+  "countries": [
+   "GB"
+  ]
  },
  "countries": {
   "US": [

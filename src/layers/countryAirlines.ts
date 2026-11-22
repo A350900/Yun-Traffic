@@ -1,4 +1,4 @@
-import { Popup, type ExpressionSpecification, type Map as MLMap } from 'maplibre-gl'
+import { Popup, type ExpressionSpecification, type FilterSpecification, type Map as MLMap } from 'maplibre-gl'
 import { AIRPORT_LAYER } from './airports'
 
 /**
@@ -28,6 +28,8 @@ const TIERS: { id: string; minRoutes: number }[] = [
 ]
 export const COUNTRY_AIRLINES_LAYERS = [...TIERS.map((t) => t.id), PRIORITY_LAYER]
 const tierOf = (routes: number) => TIERS.findIndex((t) => routes >= t.minRoutes)
+/** Zoom from which 'closer' priority countries (e.g. Switzerland, Netherlands) join the priority layer. */
+const CLOSER_PRIORITY_ZOOM = 3
 // Drawn at about the size it's shown at the default zoom (scaled only ~0.85-1.25x
 // with zoom), at extra resolution for the screen, so text stays crisp.
 const PX = Math.min(4, Math.ceil((window.devicePixelRatio || 1) * 1.5))
@@ -43,7 +45,7 @@ const INK_1 = '#fbf3f6'
 const INK_2 = '#e9d3da'
 const GLOW = 'rgba(8, 5, 12, 0.95)'
 
-type Country = { iso: string; name: string; lon: number; lat: number; areaKm2: number; routes?: number; airlines: [string, string][]; priority?: boolean; anchor?: string }
+type Country = { iso: string; name: string; lon: number; lat: number; areaKm2: number; routes?: number; airlines: [string, string][]; priority?: boolean; priorityCloser?: boolean; fullStack?: boolean; anchor?: string }
 /** per airline: full logo, as served by our server */
 type LogoIndex = Record<string, { logo?: string; icon?: string }>
 
@@ -235,7 +237,7 @@ async function add(map: MLMap) {
         features: countries.map((c) => ({
           type: 'Feature',
           // overlaps: priority countries first (own layer), then the country with more air traffic
-          properties: { iso: c.iso, name: c.name, k: sizeFor(c.areaKm2), rank: -(c.routes ?? 0), tier: c.priority ? -1 : tierOf(c.routes ?? 0), anchor: c.anchor ?? 'center', compact: inEurope(c) },
+          properties: { iso: c.iso, name: c.name, k: sizeFor(c.areaKm2), rank: -(c.routes ?? 0), tier: c.priority ? -1 : tierOf(c.routes ?? 0), anchor: c.anchor ?? 'center', closer: !!c.priorityCloser, compact: inEurope(c) && !c.fullStack },
           geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
         })),
       },
@@ -252,7 +254,10 @@ async function add(map: MLMap) {
           id,
           type: 'symbol',
           source: SOURCE,
-          filter: ['==', ['get', 'tier'], tier],
+          // 'closer' countries sit in their traffic tier when zoomed out and in the priority layer from CLOSER_PRIORITY_ZOOM
+          filter: (priority
+            ? ['any', ['==', ['get', 'tier'], -1], ['all', ['get', 'closer'], ['>=', ['zoom'], CLOSER_PRIORITY_ZOOM]]]
+            : ['all', ['==', ['get', 'tier'], tier], ['any', ['!', ['get', 'closer']], ['<', ['zoom'], CLOSER_PRIORITY_ZOOM]]]) as unknown as FilterSpecification,
           minzoom: 1.7, // same as the airport pins
           layout: {
             // Europe zoomed out: #1 airline only; elsewhere, and from FULL_FROM_ZOOM: all (up to 3)
